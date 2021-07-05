@@ -49,17 +49,21 @@ class HyConv(nn.Module):
         return x
 
     def forward(self, x: torch.Tensor, H: torch.Tensor, hyedge_weight=None):
-        assert len(x.shape) == 2, 'the input of HyperConv should be N x C'
-        # feature transform
+        assert len(x.shape) == 3, 'the input of HyperConv should be B x N x C'
         x = x.matmul(self.theta)
 
-        # generate hyperedge feature from node feature
-        x = self.gen_hyedge_ft(x, H, hyedge_weight)
+        x_out_list = []
+        for x_in, H_in in zip(x, H):
+            # feature transform
 
-        # generate node feature from hyperedge feature
-        x = self.gen_node_ft(x, H)
-
-        if self.bias is not None:
-            return x + self.bias
-        else:
-            return x
+            # generate hyperedge feature from node feature
+            x_edge = self.gen_hyedge_ft(x_in, H_in, hyedge_weight)
+            # generate node feature from hyperedge feature
+            x_out = self.gen_node_ft(x_edge, H_in)
+            if self.bias is not None:
+                x_out = x_out + self.bias
+            else:
+                x_out = x_out
+            x_out_list.append(x_out.unsqueeze(0))
+        x_out = torch.cat(x_out_list, dim=0)
+        return x_out

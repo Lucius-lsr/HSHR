@@ -11,12 +11,15 @@ import torch
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+
+from data.utils import *
 from models.base_cnns import ResNetFeature, VGGFeature
 import os
 import pickle
 from models.HyperG.utils.data.pathology import sample_patch_coors, draw_patches_on_slide
+import numpy as np
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -67,34 +70,6 @@ class Patches(Dataset):
         return len(self.patch_coors)
 
 
-def get_files_type(directory, file_type):
-    svs_list = list()
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.' + file_type):
-                relative_root = root[len(directory)+1:]
-                svs_list.append(os.path.join(relative_root, file))
-    return svs_list
-
-
-def check_todo(svs_list, feature_list, coordinates_list):
-    to_do_list = list()
-    for svs_file in svs_list:
-        feature_file = svs_file.replace('.svs', '.npy')
-        coordinates_file = svs_file.replace('.svs', '.pkl')
-        if feature_file not in feature_list or coordinates_file not in coordinates_list:
-            to_do_list.append(svs_file)
-
-    return to_do_list
-
-
-def check_dir(file_path):
-    dir_path = os.path.dirname(file_path)
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    return file_path
-
-
 def preprocess(svs_dir, feature_dir, coordinate_dir, image_dir, batch_size=256, cnn_base='resnet', cnn_depth=34):
     svs_list = get_files_type(svs_dir, 'svs')
     feature_list = get_files_type(feature_dir, 'npy')
@@ -104,14 +79,20 @@ def preprocess(svs_dir, feature_dir, coordinate_dir, image_dir, batch_size=256, 
     for svs_relative_path in tqdm(todo_list):
         svs_file = os.path.join(svs_dir, svs_relative_path)
 
-        coordinates, bg_mask = sample_patch_coors(svs_file, num_sample=2000, patch_size=256)
-        image = draw_patches_on_slide(svs_file, coordinates, bg_mask)
-        with open(check_dir(os.path.join(coordinate_dir, svs_relative_path.replace('.svs', '.pkl'))), 'wb') as fp:
-            pickle.dump(coordinates, fp)
-        image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.png'))))
+        try:
 
-        # features = extract_ft(svs_file, coordinates, depth=cnn_depth, batch_size=batch_size, cnn_base=cnn_base)
-        # np.save(check_dir(os.path.join(feature_dir, svs_relative_path.replace('.svs', '.npy'))), features.cpu().numpy())
+            coordinates, bg_mask = sample_patch_coors(svs_file, num_sample=2000, patch_size=256)
+            image = draw_patches_on_slide(svs_file, coordinates, bg_mask)
+            with open(check_dir(os.path.join(coordinate_dir, svs_relative_path.replace('.svs', '.pkl'))), 'wb') as fp:
+                pickle.dump(coordinates, fp)
+            image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.png'))))
+            features = extract_ft(svs_file, coordinates, depth=cnn_depth, batch_size=batch_size, cnn_base=cnn_base)
+            np.save(check_dir(os.path.join(feature_dir, svs_relative_path.replace('.svs', '.npy'))),
+                    features.cpu().numpy())
+
+        except Exception as e:
+            print(e)
+            print("failing in one image, continue")
 
 
 if __name__ == '__main__':
