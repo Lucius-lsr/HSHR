@@ -2,7 +2,7 @@
 """
 @Time    : 2021/6/24 13:03
 @Author  : Lucius
-@FileName: pooling.py
+@FileName: hgrnet_pooling.py
 @Software: PyCharm
 """
 
@@ -18,12 +18,8 @@ dropout = 0.5
 pooling_strategy = 'mean'
 k_neighbors = [10]
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 def get_pooling_model(dim):
     pooling_model = HGRNet(in_ch=len_ft, n_target=n_target, hiddens=[dim], dropout=dropout, sensitive='attribute',
                            pooling_strategy=pooling_strategy, k_neighbors=k_neighbors)
-    pooling_model = pooling_model.to(device)
     return pooling_model

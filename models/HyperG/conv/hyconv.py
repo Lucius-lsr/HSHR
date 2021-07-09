@@ -64,6 +64,7 @@ class HyConv(nn.Module):
                 x_out = x_out + self.bias
             else:
                 x_out = x_out
+            assert x_out.shape[0] == x.shape[1]
             x_out_list.append(x_out.unsqueeze(0))
         x_out = torch.cat(x_out_list, dim=0)
         return x_out

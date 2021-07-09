@@ -8,14 +8,12 @@
 
 import os
 
-from distributed.protocol import torch
 import torch
 
 from data.utils import get_files_type
 from torch.utils.data import Dataset, DataLoader
 
 from models.HyperG.hyedge import pairwise_euclidean_distance
-from script.paint import paint
 import numpy as np
 import pickle
 
@@ -25,10 +23,11 @@ COORDINATE_DIR = '/Users/lishengrui/client/tmp'
 
 class RandomHyperGraph(Dataset):
 
-    def __init__(self, feature_dir, coordinate_dir, k) -> None:
+    def __init__(self, feature_dir, coordinate_dir, k, with_name=False) -> None:
         super().__init__()
         self.feature_coordinate_pairs = list()
         self.k = k
+        self.with_name = with_name
         feature_list = get_files_type(feature_dir, 'npy')
         coordinate_list = get_files_type(coordinate_dir, 'pkl')
         for feature_path in feature_list:
@@ -53,23 +52,30 @@ class RandomHyperGraph(Dataset):
         hyedge_idx = torch.arange(feature.shape[0]).unsqueeze(0).repeat(self.k, 1).transpose(1, 0).reshape(-1)
 
         # random choose k in 2 * k
-        sample_nn_idx1 = nn_idx[:, torch.randperm(2*self.k)]
-        sample_nn_idx1 = sample_nn_idx1[:, :self.k]
+        self_idx = torch.arange(nn_idx.shape[0]).reshape(-1, 1)
+        nn_idx = nn_idx[:, 1:]
+
+        sample_nn_idx1 = nn_idx[:, torch.randperm(2*self.k-1)]
+        sample_nn_idx1 = sample_nn_idx1[:, :self.k-1]
+        sample_nn_idx1 = torch.cat((self_idx, sample_nn_idx1), dim=1)
         H1 = torch.stack([sample_nn_idx1.reshape(-1), hyedge_idx])
 
-        sample_nn_idx2 = nn_idx[:, torch.randperm(2*self.k)]
-        sample_nn_idx2 = sample_nn_idx2[:, :self.k]
+        sample_nn_idx2 = nn_idx[:, torch.randperm(2*self.k-1)]
+        sample_nn_idx2 = sample_nn_idx2[:, :self.k-1]
+        sample_nn_idx2 = torch.cat((self_idx, sample_nn_idx2), dim=1)
         H2 = torch.stack([sample_nn_idx2.reshape(-1), hyedge_idx])
 
-        return feature, H1, H2
+        if self.with_name:
+            return feature, H1, H2, self.feature_coordinate_pairs[idx]
+        else:
+            return feature, H1, H2
 
     def __len__(self) -> int:
         return len(self.feature_coordinate_pairs)
 
 
-def get_dataset(feature_dir, coordinate_dir, k):
-    dataset = RandomHyperGraph(feature_dir, coordinate_dir, k)
-    # dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
+def get_dataset(feature_dir, coordinate_dir, k, with_name=False):
+    dataset = RandomHyperGraph(feature_dir, coordinate_dir, k, with_name)
     return dataset
 
 

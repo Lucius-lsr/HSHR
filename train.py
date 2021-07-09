@@ -5,44 +5,64 @@
 @FileName: train.py
 @Software: PyCharm
 """
+import os
+import time
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
 import moco.builder
-from pooling import get_pooling_model
+from data.utils import check_dir
+from pooling.hgrnet_pooling import get_pooling_model
 from data.dataloader import get_dataset
 
-FEATURE_DIR = '/Users/lishengrui/client/tmp'
-COORDINATE_DIR = '/Users/lishengrui/client/tmp'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# FEATURE_DIR = '/home2/lishengrui/TCGA_experiment/TCGA_experiment/lusc_tcga'
+# COORDINATE_DIR = '/home2/lishengrui/TCGA_experiment/TCGA_experiment/lusc_tcga'
+# MODEL_DIR = '/home2/lishengrui/TCGA_experiment/TCGA_experiment/result_lusc_tcga/models'
+FEATURE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
+COORDINATE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
+MODEL_DIR = '/home/lishengrui/TCGA_experiment/result_lusc_tcga/models'
 dim = 128
 K = 65536
 m = 0.999
 T = 0.07
-lr = 0.0003
+lr = 0.03
 momentum = 0.9
 weight_decay = 1e-4
 
 
 if __name__ == '__main__':
+
+    torch.cuda.device(1)
+
     model = moco.builder.MoCo(
-        get_pooling_model(dim),
-        get_pooling_model(dim),
+        get_pooling_model(dim).to(device),
+        get_pooling_model(dim).to(device),
+        device,
         dim, K, m, T, False)
     print(model)
+    model = model.to(device)
 
     criterion = nn.CrossEntropyLoss().cuda(True)
     optimizer = torch.optim.SGD(model.parameters(), lr, momentum=momentum, weight_decay=weight_decay)
     dataset = get_dataset(FEATURE_DIR, COORDINATE_DIR, 10)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=True, drop_last=True, num_workers=0)
 
     # switch to train mode
     model.train()
 
-    for epoch in range(100):
-        print(epoch)
-        for i, (feature, H1, H2) in enumerate(dataloader):
-            # feature, H1, H2 = feature[0], H1[0], H2[0]
+    best_loss = 9999999
+    model_id = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+    for epoch in range(500):
+        print('*'*5, 'epoch: ', epoch, '*'*5)
+        loss_sum = 0
+        loss_count = 0
+        for feature, H1, H2 in dataloader:
+            feature, H1, H2 = feature.to(device), H1.to(device), H2.to(device)
 
             # compute output
             output, target = model(im_q=(feature, H1), im_k=(feature, H2))
@@ -53,4 +73,12 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
 
-            print(loss.item())
+            loss_sum += loss.item()
+            loss_count += 1
+        loss_ave = loss_sum/loss_count
+        print('loss: ', loss_ave)
+        if epoch > 70:
+            if loss_ave < best_loss:
+                best_loss = loss_ave
+                torch.save(model, check_dir(os.path.join(MODEL_DIR, model_id, 'model_best.pth')))
+
