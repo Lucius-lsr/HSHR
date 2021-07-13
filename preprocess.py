@@ -16,7 +16,7 @@ from data.utils import *
 from models.base_cnns import ResNetFeature, VGGFeature
 import os
 import pickle
-from models.HyperG.utils.data.pathology import sample_patch_coors, draw_patches_on_slide
+from models.HyperG.utils.data.pathology import sample_patch_coors, draw_patches_on_slide, raw_img
 import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
@@ -80,16 +80,32 @@ def preprocess(svs_dir, feature_dir, coordinate_dir, image_dir, batch_size=256, 
         svs_file = os.path.join(svs_dir, svs_relative_path)
 
         try:
-
             coordinates, bg_mask = sample_patch_coors(svs_file, num_sample=2000, patch_size=256)
-            image = draw_patches_on_slide(svs_file, coordinates, bg_mask)
+            syn_image, raw_image = draw_patches_on_slide(svs_file, coordinates, bg_mask)
             with open(check_dir(os.path.join(coordinate_dir, svs_relative_path.replace('.svs', '.pkl'))), 'wb') as fp:
                 pickle.dump(coordinates, fp)
-            image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.png'))))
+            syn_image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.png'))))
+            raw_image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.jpg'))))
+            raw_image.close()
+
             features = extract_ft(svs_file, coordinates, depth=cnn_depth, batch_size=batch_size, cnn_base=cnn_base)
             np.save(check_dir(os.path.join(feature_dir, svs_relative_path.replace('.svs', '.npy'))),
                     features.cpu().numpy())
 
+        except Exception as e:
+            print(e)
+            print("failing in one image, continue")
+
+
+def tmp_supply_raw_image(svs_dir, image_dir):
+    svs_list = get_files_type(svs_dir, 'svs')
+    print(svs_list)
+    for svs_relative_path in tqdm(svs_list):
+        try:
+            svs_file = os.path.join(svs_dir, svs_relative_path)
+            raw_image = raw_img(svs_file)
+            raw_image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.jpg'))))
+            raw_image.close()
         except Exception as e:
             print(e)
             print("failing in one image, continue")
@@ -100,4 +116,5 @@ if __name__ == '__main__':
     FEATURE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
     COORDINATE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
     IMAGE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
-    preprocess(SVS_DIR, FEATURE_DIR, COORDINATE_DIR, IMAGE_DIR)
+    # preprocess(SVS_DIR, FEATURE_DIR, COORDINATE_DIR, IMAGE_DIR)
+    tmp_supply_raw_image(SVS_DIR, IMAGE_DIR)

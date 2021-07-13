@@ -21,8 +21,16 @@ def draw_patches_on_slide(slide_dir, patch_coors, bg_mask, mini_frac=32):
     img_with_mask = fuse_img_mask(np.asarray(img), bg_mask, MASK_COLOR, alpha=0.8)
     sampled_patches_img_with_mask = fuse_img_mask(np.asarray(img_with_mask), sampled_mask, SAMPLED_COLOR)
 
-    img.close()
-    return sampled_patches_img_with_mask
+    return sampled_patches_img_with_mask, img
+
+
+def raw_img(slide_dir, mini_frac=32):
+    slide = openslide.open_slide(slide_dir)
+    mini_size = np.ceil(np.array(slide.level_dimensions[0]) / mini_frac).astype(np.int)
+    mini_level = get_just_gt_level(slide, mini_size)
+    img = slide.read_region((0, 0), mini_level, slide.level_dimensions[mini_level]).convert('RGB')
+    img = img.resize(mini_size)
+    return img
 
 
 def gather_sampled_patches(patch_coors, mini_size, mini_frac) -> np.array:
