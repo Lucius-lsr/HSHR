@@ -71,8 +71,8 @@ def collect_image(key_list, idxs, save_to):
     os.mkdir(os.path.join(save_to, result_id))
     for i, idx in enumerate(idxs):
         npy_file = key_list[idx]
-        png_file = npy_file.replace('.npy', '.png')
-        shutil.copy(png_file, os.path.join(save_to, result_id, '{}.png'.format(i)))
+        png_file = npy_file.replace('.npy', '.jpg')
+        shutil.copy(png_file, os.path.join(save_to, result_id, '{}.jpg'.format(i)))
 
 
 if __name__ == '__main__':
