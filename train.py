@@ -20,11 +20,8 @@ from data.dataloader import get_dataset
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# FEATURE_DIR = '/home2/lishengrui/TCGA_experiment/TCGA_experiment/lusc_tcga'
-# COORDINATE_DIR = '/home2/lishengrui/TCGA_experiment/TCGA_experiment/lusc_tcga'
-# MODEL_DIR = '/home2/lishengrui/TCGA_experiment/TCGA_experiment/result_lusc_tcga/models'
-FEATURE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
-COORDINATE_DIR = '/home/lishengrui/TCGA_experiment/lusc_tcga'
+FEATURE_DIR = '/home/lishengrui/TCGA_experiment/all_tcga'
+COORDINATE_DIR = '/home/lishengrui/TCGA_experiment/all_tcga'
 MODEL_DIR = '/home/lishengrui/TCGA_experiment/result_lusc_tcga/models'
 dim = 128
 K = 65536
@@ -49,7 +46,8 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss().cuda(True)
     optimizer = torch.optim.SGD(model.parameters(), lr, momentum=momentum, weight_decay=weight_decay)
-    dataset = get_dataset(FEATURE_DIR, COORDINATE_DIR, 10)
+    assert FEATURE_DIR == COORDINATE_DIR
+    dataset = get_dataset(FEATURE_DIR, 10)
     dataloader = DataLoader(dataset, batch_size=128, shuffle=True, drop_last=True, num_workers=0)
 
     # switch to train mode
@@ -61,11 +59,11 @@ if __name__ == '__main__':
         print('*'*5, 'epoch: ', epoch, '*'*5)
         loss_sum = 0
         loss_count = 0
-        for feature, H1, H2 in dataloader:
-            feature, H1, H2 = feature.to(device), H1.to(device), H2.to(device)
+        for feature_0, H0, feature_1, H1 in dataloader:
+            feature_0, H0, feature_1, H1 = feature_0.to(device), H0.to(device), feature_1.to(device), H1.to(device)
 
             # compute output
-            output, target = model(im_q=(feature, H1), im_k=(feature, H2))
+            output, target = model(im_q=(feature_0, H0), im_k=(feature_1, H1))
             loss = criterion(output, target)
 
             # compute gradient and do SGD step

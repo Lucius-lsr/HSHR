@@ -6,6 +6,7 @@
 @Software: PyCharm
 """
 import sys
+
 import openslide
 import torch
 from tqdm import tqdm
@@ -18,14 +19,13 @@ import os
 import pickle
 from models.HyperG.utils.data.pathology import sample_patch_coors, draw_patches_on_slide, raw_img
 import numpy as np
-from time import sleep
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def extract_ft(slide_dir: str, patch_coors, depth=34, batch_size=16, cnn_base='resnet'):
-    slide = openslide.open_slide(slide_dir)
+def extract_ft(slide, patch_coors, depth=34, batch_size=128, cnn_base='resnet'):
+    # slide = openslide.open_slide(slide_dir)
 
     if cnn_base == 'resnet':
         model_ft = ResNetFeature(depth=depth, pooling=True, pretrained=True)
@@ -35,7 +35,7 @@ def extract_ft(slide_dir: str, patch_coors, depth=34, batch_size=16, cnn_base='r
     model_ft.eval()
 
     dataset = Patches(slide, patch_coors)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
     fts = []
     for _patches in dataloader:
@@ -84,9 +84,9 @@ def preprocess(svs_dir, feature_dir, coordinate_dir, image_dir, range_from, rang
 
     todo_list = None
     if handle_type == 'coordinate':
-        todo_list = check_todo(svs_dir, svs_list, ['0.pkl', '1.pkl'])
+        todo_list = check_todo(feature_dir, svs_list, ['0.pkl', '1.pkl'])
     elif handle_type == 'feature':
-        todo_list = check_todo(svs_dir, svs_list, ['0.npy', '1.npy'])
+        todo_list = check_todo(feature_dir, svs_list, ['0.npy', '1.npy'])
     else:
         print('handle type is wrong')
         exit()
@@ -96,8 +96,8 @@ def preprocess(svs_dir, feature_dir, coordinate_dir, image_dir, range_from, rang
     for svs_relative_path in tqdm(todo_list):
         svs_file = os.path.join(svs_dir, svs_relative_path)
         try:
-            for i in range(2):
-                if handle_type == 'coordinate':
+            if handle_type == 'coordinate':
+                for i in range(2):
                     coordinates, bg_mask = sample_patch_coors(svs_file, num_sample=2000, patch_size=256)
                     syn_image, raw_image = draw_patches_on_slide(svs_file, coordinates, bg_mask)
                     with open(get_save_path(coordinate_dir, svs_relative_path, '{}.pkl'.format(i)), 'wb') as fp:
@@ -106,41 +106,34 @@ def preprocess(svs_dir, feature_dir, coordinate_dir, image_dir, range_from, rang
                     if i == 0:
                         raw_image.save(get_save_path(image_dir, svs_relative_path, 'raw.jpg'), quality=10)
                     raw_image.close()
-                elif handle_type == 'feature':
+
+            elif handle_type == 'feature':
+                slide = openslide.open_slide(svs_file)
+                for i in range(2):
                     pre_file = get_save_path(coordinate_dir, svs_relative_path, '{}.pkl'.format(i))
-                    while not os.path.exists(pre_file):
-                        print('waiting...')
-                        sleep(10)
-                    with open(get_save_path(coordinate_dir, svs_relative_path, '{}.pkl'.format(i)), 'rb') as fp:
+                    if not os.path.exists(pre_file):
+                        break
+                    with open(pre_file, 'rb') as fp:
                         coordinates = pickle.load(fp)
-                    features = extract_ft(svs_file, coordinates, depth=cnn_depth, batch_size=batch_size,
+
+                    features = extract_ft(slide, coordinates, depth=cnn_depth, batch_size=batch_size,
                                           cnn_base=cnn_base)
                     np.save(get_save_path(feature_dir, svs_relative_path, '{}.npy'.format(i)), features.cpu().numpy())
 
+        except MemoryError as e:
+            print('While handling ', svs_relative_path)
+            print("find Memory Error, exit")
+            exit()
         except Exception as e:
             print(e)
             print("failing in one image, continue")
 
 
-# def tmp_supply_raw_image(svs_dir, image_dir):
-#     svs_list = get_files_type(svs_dir, 'svs')
-#     print(svs_list)
-#     for svs_relative_path in tqdm(svs_list):
-#         try:
-#             svs_file = os.path.join(svs_dir, svs_relative_path)
-#             raw_image = raw_img(svs_file)
-#             raw_image.save(check_dir(os.path.join(image_dir, svs_relative_path.replace('.svs', '.jpg'))))
-#             raw_image.close()
-#         except Exception as e:
-#             print(e)
-#             print("failing in one image, continue")
-
-
 if __name__ == '__main__':
     SVS_DIR = '/lishengrui/TCGA'
-    FEATURE_DIR = '/home/lishengrui/TCGA_experiment/all_tcga'
-    COORDINATE_DIR = '/home/lishengrui/TCGA_experiment/all_tcga'
-    IMAGE_DIR = '/home/lishengrui/TCGA_experiment/all_tcga'
+    FEATURE_DIR = '/home/lishengrui/tcga_result/all_tcga'
+    COORDINATE_DIR = '/home/lishengrui/tcga_result/all_tcga'
+    IMAGE_DIR = '/home/lishengrui/tcga_result/all_tcga'
 
     argv_list = sys.argv
     assert len(argv_list) == 4, 'wrong arguments'
@@ -148,4 +141,3 @@ if __name__ == '__main__':
     assert 0 <= float(argv_list[2]) <= 1
     assert argv_list[1] < argv_list[2]
     preprocess(SVS_DIR, FEATURE_DIR, COORDINATE_DIR, IMAGE_DIR, float(argv_list[1]), float(argv_list[2]), argv_list[3])
-    # tmp_supply_raw_image(SVS_DIR, IMAGE_DIR)

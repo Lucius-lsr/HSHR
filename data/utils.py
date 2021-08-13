@@ -18,25 +18,19 @@ def get_files_type(directory, file_type):
     return svs_list
 
 
-def check_todo(svs_dir, svs_list, to_dos, prerequire=None):
+def check_todo(result_root, svs_list, to_dos):
     to_do_list = list()
     for svs_relative_path in svs_list:
-        full_name = os.path.join(svs_dir, svs_relative_path)
-        file_dir = os.path.dirname(full_name)
-        files = os.listdir(file_dir)
-        for to_do in to_dos:
-            if to_do not in files:
-                if prerequire is None:
+        file_relative_dir = os.path.dirname(svs_relative_path)
+        result_dir = os.path.join(result_root, file_relative_dir)
+        if not os.path.exists(result_dir):
+            to_do_list.append(svs_relative_path)
+        else:
+            files = os.listdir(result_dir)
+            for to_do in to_dos:
+                if to_do not in files:
                     to_do_list.append(svs_relative_path)
                     break
-                else:
-                    ok = True
-                    for pre in prerequire:
-                        if pre not in files:
-                            ok = False
-                            break
-                    if ok:
-                        to_do_list.append(svs_relative_path)
 
     return to_do_list
 

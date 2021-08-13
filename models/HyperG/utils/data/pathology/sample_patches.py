@@ -2,6 +2,7 @@ import os.path as osp
 from itertools import product
 from random import shuffle
 
+import PIL
 import numpy as np
 import openslide
 from scipy import ndimage
@@ -20,7 +21,14 @@ def sample_patch_coors(slide_dir, num_sample=2000, patch_size=256):
     mini_level = get_just_gt_level(slide, mini_size)
     mini_patch_size = patch_size // mini_frac
 
-    bg_mask = generate_background_mask(slide, mini_level, mini_size)
+    if mini_level == 0:
+        raise Exception('Image too large')
+    try:
+        bg_mask = generate_background_mask(slide, mini_level, mini_size)
+    except MemoryError as e:
+        slide.close()
+        raise Exception('Handled Memory Error')
+
     assert bg_mask.shape == (mini_size[1], mini_size[0])
 
     # extract patches from available area
