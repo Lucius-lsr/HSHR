@@ -10,8 +10,6 @@ import torch.nn.functional as F
 from torch import nn
 
 from models.HyperG.conv import *
-from models.HyperG.hyedge import *
-from models.HyperG.hygraph import hyedge_concat
 
 
 class HGRNet(nn.Module):
@@ -52,12 +50,8 @@ class HGRNet(nn.Module):
         if self.pooling_strategy == 'max':
             feats_pool = x.max(dim=0)[0]
 
-        # # 1 x C -> 1 x n_target
-        # x = self.last_fc(feats_pool)
-        # # 1 x n_target -> n_target
-        # x = x.squeeze(0)
-        # return torch.sigmoid(x), feats, feats_pool
-        return feats_pool
+        final_feature = self.last_fc(feats_pool)
+        return final_feature
 
     # def get_H(self, fts, k_nearest):
     #     H = hyedge_concat([neighbor_distance(fts, k) for k in k_nearest])
