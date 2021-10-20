@@ -11,21 +11,28 @@ import os
 import torch
 
 from data.utils import get_files_type
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 from models.HyperG.hyedge import pairwise_euclidean_distance
 import numpy as np
 import pickle
+import random
 
 
 class RandomHyperGraph(Dataset):
 
-    def __init__(self, feature_and_coordinate_dir, k) -> None:
+    def __init__(self, feature_and_coordinate_dir, k, data_from=0, data_to=1) -> None:
         super().__init__()
         self.data_pairs = list()
         self.k = k
         feature_list = get_files_type(feature_and_coordinate_dir, 'npy')
-        for feature_path in feature_list:
+        feature_list.sort()
+        # shuffle
+        r = random.random
+        random.seed(6)
+        random.shuffle(feature_list, r)
+        size = len(feature_list)
+        for feature_path in feature_list[int(data_from*size):int(data_to*size)]:
             base_name = os.path.basename(feature_path)
             dir_name = os.path.join(feature_and_coordinate_dir, os.path.dirname(feature_path))
             if base_name == '0.npy':
@@ -72,13 +79,3 @@ class RandomHyperGraph(Dataset):
 
     def __len__(self) -> int:
         return len(self.data_pairs)
-
-
-if __name__=='__main__':
-    FEATURE_DIR = '/Users/lishengrui/client/tmp'
-    COORDINATE_DIR = '/Users/lishengrui/client/tmp'
-    dataset = RandomHyperGraph(FEATURE_DIR, 10)
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
-
-    for i, (feature_0, H0, feature_1, H1) in enumerate(dataloader):
-        print(i)
