@@ -11,7 +11,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics.pairwise import pairwise_distances
 
 
-
 def get_distance_matrix(x):
     G = np.dot(x, x.T)
     # 把G对角线元素拎出来，列不变，行复制n遍。
@@ -31,7 +30,7 @@ def retrieval(database_dict):
     # dis_matrix = pairwise_distances(x)
     dis_matrix = -cosine_similarity(x)  # better
 
-    _, top_idx = torch.topk(torch.from_numpy(dis_matrix), 11, dim=1, largest=False)
+    _, top_idx = torch.topk(torch.from_numpy(dis_matrix), x.shape[0], dim=1, largest=False)
     return key_list, top_idx
 
 
@@ -72,7 +71,7 @@ def accuracy(key_list, top_idx):
     for top in top_idx:
         class_truth = key_list[top[0]].split("/")[-2]
         top_k = -1
-        for k in range(1, top.shape[0]):
+        for k in range(1, 11):
             class_pred = key_list[top[k]].split("/")[-2]
             if class_pred == class_truth:
                 top_k = k
@@ -94,6 +93,21 @@ def accuracy(key_list, top_idx):
     return top_sum[0], top_sum[1], top_sum[2], top_sum[3]
 
 
+# def recall_k(key_list, top_idx):
+#     sum_num = top_idx.shape[0]
+#     ave_top_k = 0
+#     for top in top_idx:
+#         class_truth = key_list[top[0]].split("/")[-2]
+#         for k in range(1, sum_num):
+#             class_pred = key_list[top[k]].split("/")[-2]
+#             if class_pred == class_truth:
+#                 ave_top_k += k
+#                 break
+#
+#     ave_top_k /= sum_num
+#     return ave_top_k
+
+
 class Evaluator:
     def __init__(self):
         self.encoder = None
@@ -101,7 +115,7 @@ class Evaluator:
         self.feature_list_0 = []
         self.feature_list_1 = []
 
-    def reset(self, model_encoder):
+    def reset(self, model_encoder=None):
         self.encoder = model_encoder
         self.result_dict = {}
         self.feature_list_0 = []
@@ -129,14 +143,14 @@ class Evaluator:
                 self.feature_list_0.append(hidden0[i])
                 self.feature_list_1.append(hidden1[i])
 
-    def add_result(self, feature_0, feature_1, path):
-        self.result_dict[path] = feature_0
-        self.feature_list_0.append(feature_0)
-        self.feature_list_1.append(feature_1)
+    def add_result(self, hidden_0, hidden_1, path):
+        for i in range(hidden_0.shape[0]):
+            self.result_dict[path[i]] = hidden_0[i]
+            self.feature_list_0.append(hidden_0[i])
+            self.feature_list_1.append(hidden_1[i])
 
     def report(self):
         key_list, top_idx = retrieval(self.result_dict)
         top1, top3, top5, top10 = accuracy(key_list, top_idx)
         top1_, top3_, top5_, top10_ = pair_match(self.feature_list_0, self.feature_list_1)
         return top1, top3, top5, top10, top1_, top3_, top5_, top10_
-

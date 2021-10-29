@@ -5,15 +5,16 @@
 @FileName: hgrnet.py
 @Software: PyCharm
 """
-
+import torch
 import torch.nn.functional as F
 from torch import nn
 
 from models.HyperG.conv import *
+from models.HyperG.hyedge import neighbor_distance
 
 
 class HGRNet(nn.Module):
-    def __init__(self, in_ch, n_target, hiddens: list, dropout, sensitive, pooling_strategy, k_neighbors: list) -> None:
+    def __init__(self, in_ch, n_target, hiddens: list, dropout, sensitive, pooling_strategy, k) -> None:
         super().__init__()
         _in = in_ch
         self.hyconvs = []
@@ -27,11 +28,17 @@ class HGRNet(nn.Module):
         self.dropout = dropout
         self.sensitive = sensitive
         self.pooling_strategy = pooling_strategy
-        self.k_neighbors = k_neighbors
+        self.k = k
 
-    def forward(self, x_H):
+    def forward(self, x_nl, loc=True):
         # H = self.get_H(x, self.k_neighbors)
-        x, H = x_H
+        x, nn_idx = x_nl
+
+        if loc:
+            H = self.generate_random_H_loc(nn_idx)
+        else:
+            H = self.generate_H_feature(x)
+
         for hyconv in self.hyconvs:
             x = hyconv(x, H)
             x = F.leaky_relu(x, inplace=True)
@@ -53,10 +60,24 @@ class HGRNet(nn.Module):
         final_feature = self.last_fc(feats_pool)
         return final_feature
 
-    # def get_H(self, fts, k_nearest):
-    #     H = hyedge_concat([neighbor_distance(fts, k) for k in k_nearest])
-    #     return H
-    #
-    # def random_hyperedge_generate(self, coordinates):
-    #     pass
+    def generate_random_H_loc(self, nn_idx):
+        device = nn_idx.device
+        self_idx = (torch.arange(nn_idx.shape[1]).reshape(1, -1, 1)).repeat(nn_idx.shape[0], 1, 1)  # bs * ps * 1
+        hyedge_idx = torch.arange(nn_idx.shape[1]).unsqueeze(0).repeat(self.k, 1).transpose(1, 0).reshape(1, 1, -1)
+        self_idx, hyedge_idx = self_idx.to(device), hyedge_idx.to(device)
+        sample_nn_idx = nn_idx[:, :, torch.randperm(2 * self.k - 1)]
+        sample_nn_idx = sample_nn_idx[:, :, :self.k - 1]  # batch_size * patch_size * k-1
+        sample_nn_idx = torch.cat((self_idx, sample_nn_idx), dim=2)  # batch_size * patch_size * k
+        H = torch.cat(
+            (sample_nn_idx.reshape(nn_idx.shape[0], 1, -1), hyedge_idx.repeat(nn_idx.shape[0], 1, 1)), dim=1)
+
+        return H
+
+    def generate_H_feature(self, b_x):
+        h_list = []
+        for x in b_x:
+            h = neighbor_distance(x, self.k)
+            h_list.append(h.unsqueeze(0))
+        H = torch.cat(h_list, dim=0)
+        return H
 

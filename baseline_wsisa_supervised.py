@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 
+from baseline_supervised import ClassifyLayer, Labeler
 from data.utils import get_files_type
 from evaluate import Evaluator
 from self_supervision.call import get_moco
@@ -153,25 +154,33 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     CLUSTER = False
     depth = 2
+    class_num = 30
 
     train_dataset = WSISADataset(0, 0.8, cluster=CLUSTER)
     test_dataset = WSISADataset(0.8, 1, cluster=CLUSTER)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=0)
 
-    model = get_moco(Layer(feature_in, feature_out, depth), Layer(feature_in, feature_out, depth), device, feature_out)
+    model = Layer(feature_in, feature_out, depth)
     model = model.to(device)
+    last_layer = ClassifyLayer(feature_out, class_num)
+    last_layer = last_layer.to(device)
+    labeler = Labeler(class_num)
+
     optimizer = torch.optim.SGD(model.parameters(), lr, momentum=momentum, weight_decay=weight_decay)
 
     evaluator = Evaluator()
+
     for epoch in range(500):
         print('*' * 5, 'epoch: ', epoch, '*' * 5)
         loss_sum = 0
         loss_count = 0
         for x0, x1, path in train_dataloader:
-            x0, x1 = x0.to(device), x1.to(device)
-            output, target = model(x0, x1)
-            loss = criterion(output, target)
+            x0 = x0.to(device)
+            feature = model(x0)
+            output = last_layer(feature)
+            label = labeler.get_label(path).to(device)
+            loss = criterion(output, label)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -180,10 +189,9 @@ if __name__ == '__main__':
         loss_ave = loss_sum / loss_count
         print("loss: ", loss_ave)
 
-        evaluator.reset(copy.deepcopy(model.encoder_q))
+        evaluator.reset(copy.deepcopy(model))
         for x0, x1, path in test_dataloader:
             x0, x1 = x0.to(device), x1.to(device)
             evaluator.add_data_without_H(x0, x1, path)
         top1, top3, top5, top10, top1_, top3_, top5_, top10_ = evaluator.report()
         print('class acc: top1:{:.4} top3:{:.4f} top5:{:.4f} top10:{:.4f}'.format(top1, top3, top5, top10))
-        # print('pair acc: top1:{:.4} top3:{:.4f} top5:{:.4f} top10:{:.4f}'.format(top1_, top3_, top5_, top10_))

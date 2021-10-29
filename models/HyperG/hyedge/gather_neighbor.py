@@ -83,6 +83,8 @@ def neighbor_distance(x: torch.Tensor, k_nearest, dis_metric=pairwise_euclidean_
     node_num = x.size(0)
     dis_matrix = dis_metric(x)
     _, nn_idx = torch.topk(dis_matrix, k_nearest, dim=1, largest=False)
+    for i in range(node_num):
+        nn_idx[i][0] = i
     hyedge_idx = torch.arange(node_num).to(x.device).unsqueeze(0).repeat(k_nearest, 1).transpose(1, 0).reshape(-1)
     H = torch.stack([nn_idx.reshape(-1), hyedge_idx])
     return H

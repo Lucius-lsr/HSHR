@@ -6,15 +6,25 @@
 @Software: PyCharm
 """
 import os
+import pickle
+
+TMP = '/home2/lishengrui/TCGA_experiment/result_all_tcga/tmp'
 
 
 def get_files_type(directory, file_type):
-    svs_list = list()
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.' + file_type):
-                relative_root = root[len(directory) + 1:]
-                svs_list.append(os.path.join(relative_root, file))
+    tmp_file = TMP + '/{}_{}.pkl'.format(directory.replace('/','*'), file_type.replace('.', '*'))
+    if os.path.exists(tmp_file):
+        with open(tmp_file, 'rb') as f:
+            svs_list = pickle.load(f)
+    else:
+        svs_list = list()
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                if file.endswith('.' + file_type):
+                    relative_root = root[len(directory) + 1:]
+                    svs_list.append(os.path.join(relative_root, file))
+        with open(tmp_file, 'wb') as fp:
+            pickle.dump(svs_list, fp)
     return svs_list
 
 

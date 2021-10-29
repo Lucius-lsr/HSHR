@@ -21,7 +21,7 @@ class HyConv(nn.Module):
         nn.init.zeros_(self.bias)
 
     def gen_hyedge_ft(self, x: torch.Tensor, H: torch.Tensor, hyedge_weight=None):
-        ft_dim = x.size(1)
+        ft_dim = x.shape[1]
         node_idx, hyedge_idx = H
         hyedge_num = count_hyedge(H)
 
@@ -36,7 +36,7 @@ class HyConv(nn.Module):
         return x
 
     def gen_node_ft(self, x: torch.Tensor, H: torch.Tensor):
-        ft_dim = x.size(1)
+        ft_dim = x.shape[1]
         node_idx, hyedge_idx = H
         node_num = count_node(H)
 
@@ -64,7 +64,9 @@ class HyConv(nn.Module):
                 x_out = x_out + self.bias
             else:
                 x_out = x_out
-            assert x_out.shape[0] == x.shape[1]
+            assert x_out.shape[0] == x.shape[1], "x_out.shape[0] is {} and x.shape[1] is {}".format(x_out.shape[0],
+                                                                            x.shape[1])
+            # if x_out.shape[0] == x.shape[1]:
             x_out_list.append(x_out.unsqueeze(0))
         x_out = torch.cat(x_out_list, dim=0)
         return x_out

@@ -14,7 +14,7 @@ from data.utils import get_files_type
 from evaluate import Evaluator
 from tqdm import tqdm
 
-FEATURE_COORDINATE_DIR = '/home2/lishengrui/tcga_result/all_tcga'
+FEATURE_COORDINATE_DIR = '/home2/lishengrui/all_tcga'
 
 
 def raw_sample_result(evaluator, data_from, data_to):
@@ -39,9 +39,9 @@ def raw_sample_result(evaluator, data_from, data_to):
 
 
 if __name__ == '__main__':
-    evaluator = Evaluator(1)
+    evaluator = Evaluator()
     raw_sample_result(evaluator, 0.8, 1)
     top1, top3, top5, top10, top1_, top3_, top5_, top10_ = evaluator.report()
     print('class acc: top1:{:.4} top3:{:.4f} top5:{:.4f} top10:{:.4f}'.format(top1, top3, top5, top10))
-    print('pair acc: top1:{:.4} top3:{:.4f} top5:{:.4f} top10:{:.4f}'.format(top1_, top3_, top5_, top10_))
+    # print('pair acc: top1:{:.4} top3:{:.4f} top5:{:.4f} top10:{:.4f}'.format(top1_, top3_, top5_, top10_))
 

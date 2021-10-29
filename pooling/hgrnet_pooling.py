@@ -12,10 +12,10 @@ from pooling.hgrnet import HGRNet
 len_ft = 512  # fixed after preprocessing
 dropout = 0.5
 pooling_strategy = 'mean'
-k_neighbors = [10]
+k = 10
 
 
 def get_pooling_model(hidden_dim, n_target):
     pooling_model = HGRNet(in_ch=len_ft, n_target=n_target, hiddens=[hidden_dim], dropout=dropout, sensitive='attribute',
-                           pooling_strategy=pooling_strategy, k_neighbors=k_neighbors)
+                           pooling_strategy=pooling_strategy, k=k)
     return pooling_model
