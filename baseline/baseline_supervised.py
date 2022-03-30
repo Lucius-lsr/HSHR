@@ -16,7 +16,7 @@ from data.dataloader import RandomHyperGraph
 from evaluate import Evaluator
 import sys
 
-sys.path.append('pooling')
+sys.path.append('../pooling')
 
 FEATURE_DIR = '/home2/lishengrui/all_tcga'
 COORDINATE_DIR = '/home2/lishengrui/all_tcga'
@@ -32,32 +32,6 @@ batch_size = 128
 
 g_class_num = 30
 criterion = nn.CrossEntropyLoss()
-
-
-class ClassifyLayer(nn.Module):
-    def __init__(self, dim_feature, num_class) -> None:
-        super().__init__()
-        self.last_fc = nn.Linear(dim_feature, num_class)
-
-    def forward(self, f):
-        return self.last_fc(f)
-
-
-class Labeler:
-    def __init__(self, class_num):
-        self.class_num = class_num
-        self.class_count = 0
-        self.class_record = dict()
-
-    def get_label(self, path_batch):
-        label = []
-        for p in path_batch:
-            class_name = p.split("/")[-2]
-            if class_name not in self.class_record.keys():
-                self.class_record[class_name] = self.class_count
-                self.class_count += 1
-            label.append(self.class_record[class_name])
-        return torch.LongTensor(label)
 
 
 if __name__ == '__main__':

@@ -9,8 +9,7 @@ SAMPLED_COLOR = [0, 0, 255]
 MASK_COLOR = [0, 255, 0]
 
 
-def draw_patches_on_slide(slide_dir, patch_coors, bg_mask, mini_frac=32):
-    slide = openslide.open_slide(slide_dir)
+def draw_patches_on_slide(slide, patch_coors, bg_mask, mini_frac=32):
     mini_size = np.ceil(np.array(slide.level_dimensions[0]) / mini_frac).astype(np.int)
     mini_level = get_just_gt_level(slide, mini_size)
 
@@ -18,10 +17,10 @@ def draw_patches_on_slide(slide_dir, patch_coors, bg_mask, mini_frac=32):
     img = img.resize(mini_size)
 
     sampled_mask = gather_sampled_patches(patch_coors, mini_size, mini_frac)
-    img_with_mask = fuse_img_mask(np.asarray(img), bg_mask, MASK_COLOR, alpha=0.8)
-    sampled_patches_img_with_mask = fuse_img_mask(np.asarray(img_with_mask), sampled_mask, SAMPLED_COLOR)
-
-    return sampled_patches_img_with_mask, img
+    img_with_mask = fuse_img_mask(np.asarray(img), bg_mask, MASK_COLOR, alpha=0)
+    img_with_mask_1 = fuse_img_mask(np.asarray(img), bg_mask, MASK_COLOR)
+    sampled_patches_img_with_mask = fuse_img_mask(np.asarray(img_with_mask_1), sampled_mask, SAMPLED_COLOR, alpha=0)
+    return sampled_patches_img_with_mask, img_with_mask, img
 
 
 def raw_img(slide_dir, mini_frac=32):

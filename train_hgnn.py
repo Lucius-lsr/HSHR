@@ -2,7 +2,7 @@
 """
 @Time    : 2021/6/29 10:36
 @Author  : Lucius
-@FileName: train.py
+@FileName: train_hgnn.py
 @Software: PyCharm
 """
 import copy

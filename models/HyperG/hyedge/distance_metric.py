@@ -13,7 +13,7 @@ def pairwise_euclidean_distance(x: torch.Tensor):
 
     x_transpose = torch.transpose(x, dim0=0, dim1=1)
     x_inner = torch.matmul(x, x_transpose)
-    x_inner = -2 * x_inner
+    x_inner = - 2 * x_inner
     x_square = torch.sum(x ** 2, dim=1, keepdim=True)
     x_square_transpose = torch.transpose(x_square, dim0=0, dim1=1)
     dis = x_square + x_inner + x_square_transpose

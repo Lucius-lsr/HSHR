@@ -22,7 +22,7 @@ class RandomHyperGraph(Dataset):
         super().__init__()
         self.data_pairs = list()
         self.k = k
-        feature_list = get_files_type(feature_and_coordinate_dir, 'npy')
+        feature_list = get_files_type(feature_and_coordinate_dir, '0.npy')
         feature_list.sort()
         # shuffle
         r = random.random

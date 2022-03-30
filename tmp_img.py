@@ -20,7 +20,7 @@ import pickle
 from models.HyperG.utils.data.pathology import sample_patch_coors, draw_patches_on_slide, raw_img
 import numpy as np
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -80,12 +80,14 @@ class Patches(Dataset):
 
 def handle_slide(slide, num_sample=2000, patch_size=256, batch_size=256, cnn_base='resnet', cnn_depth=34, color_min=0.8):
     coordinates, bg_mask = sample_patch_coors(slide, num_sample=num_sample, patch_size=patch_size, color_min=color_min)
-    # img1, img2, img3 = draw_patches_on_slide(slide, coordinates, bg_mask)
-    # img1.save('/home2/lishengrui/TCGA_experiment/images/img1.jpg')
-    # img2.save('/home2/lishengrui/TCGA_experiment/images/img2.jpg')
-    # img3.save('/home2/lishengrui/TCGA_experiment/images/img3.jpg')
-    # print('finished')
-    # exit()
+
+    img1, img2, img3 = draw_patches_on_slide(slide, coordinates, bg_mask)
+    img1.save('/home2/lishengrui/TCGA_experiment/images/img1.jpg')
+    img2.save('/home2/lishengrui/TCGA_experiment/images/img2.jpg')
+    img3.save('/home2/lishengrui/TCGA_experiment/images/img3.jpg')
+    print('finished')
+    exit()
+
     features = extract_ft(slide, coordinates, depth=cnn_depth, batch_size=batch_size, cnn_base=cnn_base)
     return coordinates, features
 
@@ -95,8 +97,8 @@ def preprocess(svs_dir, feature_dir, coordinate_dir):
     svs_list.sort()
 
     # todo_list = check_todo(feature_dir, svs_list, ['2x.pkl', '2x.npy', '4x.pkl', '4x.npy'])
-    todo_list = check_todo(feature_dir, svs_list, ['0.pkl', '0.npy', '1.pkl', '1.npy'])
-    # todo_list.pop(0)
+    todo_list = check_todo(feature_dir, svs_list, ['0.pkl', '0.npy', '1.pkl', '1.npy', 'fake'])
+    todo_list.pop(0)
 
     for svs_relative_path in tqdm(todo_list):
         svs_file = os.path.join(svs_dir, svs_relative_path)
@@ -146,8 +148,8 @@ if __name__ == '__main__':
     # SVS_DIR = '/lishengrui/TCGA'
     # FEATURE_DIR = '/home2/lishengrui/all_tcga'
     # COORDINATE_DIR = '/home2/lishengrui/all_tcga'
-    SVS_DIR = '/home2/lishengrui/tcga_result/thca_tcga'
-    FEATURE_DIR = '/home2/lishengrui/all_tcga/thca_tcga'
-    COORDINATE_DIR = '/home2/lishengrui/all_tcga/thca_tcga'
+    SVS_DIR = '/home2/lishengrui/tcga_result/paad_tcga'
+    FEATURE_DIR = '/home2/lishengrui/all_tcga/paad_tcga'
+    COORDINATE_DIR = '/home2/lishengrui/all_tcga/paad_tcga'
 
     preprocess(SVS_DIR, FEATURE_DIR, COORDINATE_DIR)

@@ -13,9 +13,7 @@ BACKGROUND = 0
 FOREGROUND = 1
 
 
-def sample_patch_coors(slide_dir, num_sample=2000, patch_size=256):
-    slide = openslide.open_slide(slide_dir)
-
+def sample_patch_coors(slide, num_sample=2000, patch_size=256, color_min=0.8):
     mini_frac = 32
     mini_size = np.ceil(np.array(slide.level_dimensions[0]) / mini_frac).astype(np.int)
     mini_level = get_just_gt_level(slide, mini_size)
@@ -57,7 +55,7 @@ def sample_patch_coors(slide_dir, num_sample=2000, patch_size=256):
         # print(np.count_nonzero(mini_patch[H_min:H_max, W_min:W_max]), th_num)
         # print(mini_patch)
         # print(H_min, H_max, W_min, W_max)
-        if np.count_nonzero(mini_patch[H_min:H_max, W_min:W_max]) >= th_num*0.8:
+        if np.count_nonzero(mini_patch[H_min:H_max, W_min:W_max]) >= th_num * color_min:
             # filter those white background
             # if is_bg(slide, origin, patch_size):
             #     continue
