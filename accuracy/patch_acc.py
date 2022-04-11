@@ -8,9 +8,6 @@
 import numpy as np
 import torch
 
-from accuracy.emd.emd_distance import getEMD
-
-
 def patch_accuracy(key_list, top_idx, r):
     assert len(key_list) == top_idx.shape[0]
     slide_counter = {}
@@ -71,25 +68,3 @@ def patch_accuracy_v3(key_list, top_idx, dis_mat):
             assert key_list[idx-1].split('@')[-2] == key.split('@')[-2]
     return list_slide_id, slide_top_idx
 
-
-def patch_accuracy_emd(key_list, top_idx, dis_mat, r=40):
-    dim = dis_mat.shape[0]
-    num_wsi = int(dim / 20)
-
-    w = np.ones(20)
-    w /= 20
-    wsi_dis_mat = np.zeros([num_wsi, num_wsi])
-    for i in range(num_wsi):
-        for j in range(num_wsi):
-            d = getEMD(dis_mat[i:i+20, j:j+20], 20, 20, w, w)
-            wsi_dis_mat[i][j] = d
-
-    _, slide_top_idx = torch.topk(torch.from_numpy(wsi_dis_mat), wsi_dis_mat.shape[0], dim=1, largest=False)
-    list_slide_id = []
-    for idx, key in enumerate(key_list):
-        if idx % 20 == 0:
-            slide_id = key.split('@')[-2]
-            list_slide_id.append(slide_id)
-        else:
-            assert key_list[idx-1].split('@')[-2] == key.split('@')[-2]
-    return list_slide_id, slide_top_idx
