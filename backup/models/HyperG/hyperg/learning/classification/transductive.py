@@ -269,7 +269,7 @@ def multi_hg_weighting_trans_infer(hg_list, y, lbd, mu, max_iter, log=True):
 def tensor_hg_trans_infer(X, y, lbd, alpha, mu, stepsize, max_iter=50, hsl_iter=10, log=True, stop=True):
     """ tensor-based (dynamic) hypergraph learning
     :param X: numpy array, shape = (n_nodes, n_features)
-    :param y: numpy array, shape = (n_nodes,) -1 for the unlabeled data, 0,1,2.. for the labeled data
+    :param y: numpy array, shape = (n_nodes,) -1 for the unlabeled utils, 0,1,2.. for the labeled utils
     :param lbd: float, the positive tradeoff parameter of empirical loss
     :param alpha: float,
     :param mu: float,

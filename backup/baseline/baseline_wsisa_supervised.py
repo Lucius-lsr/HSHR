@@ -18,9 +18,8 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 
 from baseline_supervised import ClassifyLayer, Labeler
-from data.utils import get_files_type
-from evaluate import Evaluator
-from self_supervision.call import get_moco
+from utils.data_utils import get_files_type
+from utils.evaluate import Evaluator
 
 feature_and_coordinate_dir = '/home2/lishengrui/all_tcga'
 TMP = '/home2/lishengrui/TCGA_experiment/result_all_tcga/tmp'

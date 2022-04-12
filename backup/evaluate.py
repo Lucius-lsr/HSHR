@@ -269,7 +269,7 @@ class Evaluator:
         return mean_acc(mMV), inc, list_slide_id
 
 # if __name__ == '__main__':
-#     from data.utils import get_files_type
+#     from utils.utils import get_files_type
 #     import pickle
 #     TMP = '/home2/lishengrui/TCGA_experiment/result_all_tcga/tmp'
 #     SVS_DIR = '/lishengrui/TCGA'

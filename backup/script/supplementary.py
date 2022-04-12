@@ -10,8 +10,8 @@ import pickle as pkl
 import os
 
 # with open('path2pid', 'rb') as f:
-#     data = pkl.load(f)
-#     print(data)
+#     utils = pkl.load(f)
+#     print(utils)
 
 SVS_DIR = '/lishengrui/TCGA'
 SVS_DIR_2 = '/home2/lishengrui/tcga_result'

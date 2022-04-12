@@ -6,14 +6,13 @@
 @Software: PyCharm
 """
 
-import copy
 import os
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from pooling.hgrnet_pooling import get_pooling_model
-from data.dataloader import RandomHyperGraph
-from evaluate import Evaluator
+from utils.dataloader import RandomHyperGraph
+from utils.evaluate import Evaluator
 import sys
 
 sys.path.append('../pooling')

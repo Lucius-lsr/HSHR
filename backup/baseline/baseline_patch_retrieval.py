@@ -2,7 +2,7 @@
 """
 @Time    : 2021/12/17 14:38
 @Author  : Lucius
-@FileName: baseline_patch_retrieval.py
+@FileName: hypergraph_retrieval.py
 @Software: PyCharm
 """
 
@@ -18,8 +18,8 @@ import sys
 from base_model import HashLayer
 
 sys.path.append("..")
-from data.utils import get_files_type
-from evaluate import Evaluator
+from utils.data_utils import get_files_type
+from utils.evaluate import Evaluator
 
 
 def cluster_feature(data_from, data_to, types):

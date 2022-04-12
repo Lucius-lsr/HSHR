@@ -19,7 +19,7 @@ import numpy as np
 
 sys.path.append("..")
 
-from data.utils import get_files_type
+from utils.data_utils import get_files_type
 
 
 class WSI:

@@ -11,7 +11,7 @@ import pickle
 
 from tqdm import tqdm
 
-from data.utils import get_files_type
+from utils.data_utils import get_files_type
 from torch.utils.data import Dataset
 
 import numpy as np

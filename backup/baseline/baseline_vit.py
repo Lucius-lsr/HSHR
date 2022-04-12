@@ -1,22 +1,19 @@
-import copy
 import pickle
 
-import torch
 from torch import nn
 
 from einops import rearrange, repeat
-from einops.layers.torch import Rearrange
 
 import os
 import torch
-from data.utils import get_files_type
+from utils.data_utils import get_files_type
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 import numpy as np
 import random
 
-from evaluate import Evaluator
+from utils.evaluate import Evaluator
 from self_supervision.call import get_moco
 
 feature_and_coordinate_dir = '/home2/lishengrui/all_tcga'

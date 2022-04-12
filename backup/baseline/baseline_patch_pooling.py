@@ -11,8 +11,8 @@ import numpy as np
 import sys
 sys.path.append("..")
 
-from data.utils import get_files_type
-from evaluate import Evaluator
+from utils.data_utils import get_files_type
+from utils.evaluate import Evaluator
 from tqdm import tqdm
 
 

@@ -6,7 +6,6 @@
 @Software: PyCharm
 """
 import self_supervision.moco.builder
-import self_supervision.simsiam.builder
 
 
 def get_moco(encoder_q, encoder_k, device, n_target):
@@ -18,10 +17,4 @@ def get_moco(encoder_q, encoder_k, device, n_target):
         encoder_k.to(device),
         device,
         n_target, K, m, T, False)
-
-
-def get_simsiam(core_model):
-    return self_supervision.simsiam.builder.SimSiam(base_encoder=core_model, dim=64, pred_dim=64)
-
-
 

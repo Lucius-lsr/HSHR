@@ -8,14 +8,9 @@
 import os
 import pickle
 
-import torch
-from torch import nn
 
-TMP = '/home2/lishengrui/TCGA_experiment/result_all_tcga/tmp'
-
-
-def get_files_type(directory, file_suffix):
-    tmp_file = TMP + '/{}_{}.pkl'.format(directory.replace('/', '*'), file_suffix.replace('.', '*'))
+def get_files_type(directory, file_suffix, tmp):
+    tmp_file = tmp + '/{}_{}.pkl'.format(directory.replace('/', '*'), file_suffix.replace('.', '*'))
     if os.path.exists(tmp_file):
         with open(tmp_file, 'rb') as f:
             svs_list = pickle.load(f)
@@ -61,58 +56,3 @@ def get_save_path(root_dir, svs_relative_path, file_name):
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     return os.path.join(file_dir, file_name)
-
-
-class ClassifyLayer(nn.Module):
-    def __init__(self, dim_feature, num_class) -> None:
-        super().__init__()
-        self.last_fc = nn.Linear(dim_feature, num_class)
-
-    def forward(self, f):
-        return self.last_fc(f)
-
-
-class Labeler:
-    def __init__(self):
-        self.class_type = [
-            'acc_tcga',
-            'cesc_tcga',
-            'dlbc_tcga',
-            'hnsc_tcga',
-            'kirp_tcga',
-            'luad_tcga',
-            'ov_tcga',
-            'read_tcga',
-            'stad_tcga',
-            'ucec_tcga',
-            'blca_tcga',
-            'chol_tcga',
-            'esca_tcga',
-            'kich_tcga',
-            'lgg_tcga',
-            'lusc_tcga',
-            'pcpg_tcga',
-            'sarc_tcga',
-            'tgct_tcga',
-            'ucs_tcga',
-            'brca_tcga',
-            'coad_tcga',
-            'gbm_tcga',
-            'kirc_tcga',
-            'lihc_tcga',
-            'meso_tcga',
-            'prad_tcga',
-            'skcm_tcga',
-            'thym_tcga',
-            'uvm_tcga'
-        ]
-        self.class_record = dict()
-        for i, c in enumerate(self.class_type):
-            self.class_record[c] = i
-
-    def get_label(self, path_batch):
-        label = []
-        for p in path_batch:
-            class_name = p.split("/")[-2]
-            label.append(self.class_record[class_name])
-        return torch.LongTensor(label)

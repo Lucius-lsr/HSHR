@@ -21,11 +21,10 @@ from torch import nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
-from sklearn.cluster import KMeans
 from tqdm import tqdm
 
-from data.utils import get_files_type, check_dir
-from evaluate import Evaluator
+from utils.data_utils import get_files_type
+from utils.evaluate import Evaluator
 from self_supervision.call import get_moco
 
 feature_and_coordinate_dir = '/home2/lishengrui/all_tcga'

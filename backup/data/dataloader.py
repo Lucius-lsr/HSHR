@@ -8,7 +8,7 @@
 
 import os
 import torch
-from data.utils import get_files_type
+from utils.data_utils import get_files_type
 from torch.utils.data import Dataset
 
 from models.HyperG.hyedge import pairwise_euclidean_distance

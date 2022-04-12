@@ -16,7 +16,7 @@ def print_log(message):
 
 def init_label_matrix(y):
     """
-    :param y: numpy array, shape = (n_nodes,) -1 for the unlabeled data, 0,1,2.. for the labeled data
+    :param y: numpy array, shape = (n_nodes,) -1 for the unlabeled utils, 0,1,2.. for the labeled utils
     :return:
     """
     y = y.reshape(-1)

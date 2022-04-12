@@ -8,11 +8,11 @@
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
 
-from data.utils import get_files_type
+from utils.data_utils import get_files_type
 import os
 from tqdm import tqdm
 import numpy as np
-from evaluate import accuracy
+from utils.evaluate import accuracy
 import random
 
 FEATURE_COORDINATE_DIR = '/home2/lishengrui/tcga_result/all_tcga'
