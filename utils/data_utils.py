@@ -26,18 +26,20 @@ def get_files_type(directory, file_suffix, tmp):
     return svs_list
 
 
-def check_todo(result_root, svs_list, to_dos):
+def check_todo(root, svs_list, to_dos):
     to_do_list = list()
     for svs_relative_path in svs_list:
-        file_relative_dir = os.path.dirname(svs_relative_path)
-        result_dir = os.path.join(result_root, file_relative_dir)
+        svs_dir = os.path.dirname(svs_relative_path)
+        svs_name = os.path.basename(svs_relative_path)
+        relative_dir = os.path.join(svs_dir, svs_name.split('.')[0])
+        result_dir = os.path.join(root, relative_dir)
         if not os.path.exists(result_dir):
-            to_do_list.append(svs_relative_path)
+            to_do_list.append(relative_dir)
         else:
             files = os.listdir(result_dir)
             for to_do in to_dos:
                 if to_do not in files:
-                    to_do_list.append(svs_relative_path)
+                    to_do_list.append(relative_dir)
                     break
 
     return to_do_list
@@ -56,3 +58,7 @@ def get_save_path(root_dir, svs_relative_path, file_name):
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     return os.path.join(file_dir, file_name)
+
+
+def patientId(path):
+    return path.split("/")[-1].split('-')[2]

@@ -11,7 +11,6 @@ import numpy as np
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 import pickle
-
 from data_utils import get_files_type
 
 

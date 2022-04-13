@@ -11,6 +11,7 @@ import torch
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from retrieval_utils import hyedge_similarity, generate_incidence
+from utils.data_utils import patientId
 
 
 class ConMat():
@@ -58,7 +59,7 @@ def mmv_accuracy(at_k, key_list, top_idx):
         preds = []
         check = 0
         for k in range(top.shape[0]):
-            if idx == top[k] or key_list[idx].split("/")[-1] == key_list[top[k]].split("/")[-1]:
+            if idx == top[k] or patientId(key_list[idx]) == patientId(key_list[top[k]]):
                 continue
             check += 1
             class_pred = key_list[top[k]].split("/")[-2]
@@ -90,7 +91,7 @@ def map_accuracy(at_k, key_list, top_idx):
         check = 0
         corr_index = []
         for k in range(top.shape[0]):
-            if idx == top[k] or key_list[idx].split("/")[-1] == key_list[top[k]].split("/")[-1]:
+            if idx == top[k] or patientId(key_list[idx]) == patientId(key_list[top[k]]):
                 continue
             check += 1
             class_pred = key_list[top[k]].split("/")[-2]

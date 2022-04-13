@@ -5,8 +5,10 @@
 @FileName: preprocess.py
 @Software: PyCharm
 """
+import argparse
 
 import openslide
+import torch
 from torchvision.models import densenet121
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
@@ -19,13 +21,10 @@ import pickle
 from utils.sampling import sample_patch_coors
 import numpy as np
 
-SVS_DIR = 'YOUR/SVS/FILES/ROOT/DIRECTORY'
-RESULT_DIR = 'THE/ROOT/DIRECTORY/OF/YOUR/PREPROCESSED/RESULT'
-TMP = 'THE/PATH/OF/TMP/DIRECTORY'
-
-
 
 def extract_ft(slide, patch_coors, depth=34, batch_size=128, cnn_base='resnet'):
+    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     if cnn_base == 'resnet':
         model_ft = ResNetFeature(depth=depth, pooling=True, pretrained=True)
         input_img_size = 224
@@ -83,27 +82,21 @@ def handle_slide(slide, num_sample=2000, patch_size=256, batch_size=256, cnn_bas
     return coordinates, features
 
 
-def preprocess(svs_dir, result_dir):
-    svs_list = get_files_type(svs_dir, 'svs', TMP)
-    svs_list.sort()
-    todo_list = check_todo(result_dir, svs_list, ['0.pkl', '0.npy', '1.pkl', '1.npy'])
+def preprocess(svs_dir, result_dir, tmp_path):
+    svs_relative_path_list = get_files_type(svs_dir, 'svs', tmp_path)
+    todo_list = check_todo(result_dir, svs_relative_path_list, ['0.pkl', '0.npy', '1.pkl', '1.npy'])
 
     for svs_relative_path in tqdm(todo_list):
-        svs_file = os.path.join(svs_dir, svs_relative_path)
+        svs_file = os.path.join(svs_dir, svs_relative_path) + '.svs'
         try:
             slide = openslide.open_slide(svs_file)
 
-            coordinates, features = handle_slide(slide, num_sample=2000, patch_size=256)
-            coordinates_file = get_save_path(result_dir, svs_relative_path, '0.pkl')
-            with open(coordinates_file, 'wb') as fp:
-                pickle.dump(coordinates, fp)
-            np.save(get_save_path(result_dir, svs_relative_path, '0.npy'), features.cpu().numpy())
-
-            coordinates, features = handle_slide(slide, num_sample=2000, patch_size=256)
-            coordinates_file = get_save_path(result_dir, svs_relative_path, '1.pkl')
-            with open(coordinates_file, 'wb') as fp:
-                pickle.dump(coordinates, fp)
-            np.save(get_save_path(result_dir, svs_relative_path, '1.npy'), features.cpu().numpy())
+            for idx in ['0', '1']:
+                coordinates, features = handle_slide(slide, num_sample=2000, patch_size=256)
+                coordinates_file = get_save_path(result_dir, svs_relative_path, idx+'.pkl')
+                with open(coordinates_file, 'wb') as fp:
+                    pickle.dump(coordinates, fp)
+                np.save(get_save_path(result_dir, svs_relative_path, idx+'.npy'), features.cpu().numpy())
 
         except MemoryError as e:
             print('While handling ', svs_relative_path)
@@ -115,6 +108,9 @@ def preprocess(svs_dir, result_dir):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    preprocess(SVS_DIR, RESULT_DIR)
+    parser = argparse.ArgumentParser("Preprocess raw WSIs")
+    parser.add_argument("--SVS_DIR", type=str, required=True, help="The path of your WSI datasets.")
+    parser.add_argument("--RESULT_DIR", type=str, required=True, help="A path to save your preprocessed results.")
+    parser.add_argument("--TMP", type=str, required=True, help="The path to save some necessary tmp files.")
+    args = parser.parse_args()
+    preprocess(args.SVS_DIR, args.RESULT_DIR, args.TMP)

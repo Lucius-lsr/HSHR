@@ -2,7 +2,6 @@ import os.path as osp
 from itertools import product
 from random import shuffle
 
-import PIL
 import numpy as np
 import openslide
 from scipy import ndimage
