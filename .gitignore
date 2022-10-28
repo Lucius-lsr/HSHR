@@ -1,6 +1,6 @@
 /.idea
 /backup
-
+/tmp_test
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -130,3 +130,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/tmp_test/

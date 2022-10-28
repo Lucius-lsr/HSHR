@@ -31,7 +31,7 @@ def check_todo(root, svs_list, to_dos):
     for svs_relative_path in svs_list:
         svs_dir = os.path.dirname(svs_relative_path)
         svs_name = os.path.basename(svs_relative_path)
-        relative_dir = os.path.join(svs_dir, svs_name.split('.')[0])
+        relative_dir = os.path.join(svs_dir, svs_name[:-4])
         result_dir = os.path.join(root, relative_dir)
         if not os.path.exists(result_dir):
             to_do_list.append(relative_dir)
@@ -53,11 +53,11 @@ def check_dir(file_path):
 
 
 def get_save_path(root_dir, svs_relative_path, file_name):
-    fake_path = os.path.join(root_dir, svs_relative_path)
-    file_dir = os.path.dirname(fake_path)
+    full_path = os.path.join(root_dir, svs_relative_path, file_name)
+    file_dir = os.path.dirname(full_path)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
-    return os.path.join(file_dir, file_name)
+    return full_path
 
 
 def patientId(path):

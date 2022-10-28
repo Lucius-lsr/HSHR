@@ -25,3 +25,11 @@ class HashLayer(nn.Module):
         x = torch.tanh(x)
         return x
 
+
+class SqueezeOp(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        x = x.squeeze()
+        return x

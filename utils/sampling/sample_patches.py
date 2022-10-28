@@ -110,3 +110,44 @@ def is_bg(slide, origin, patch_size):
     else:
         img.close()
         return False
+
+
+def dense_patch_coors(slide, patch_size=256, color_min=0.8):
+    mini_frac = 32
+    mini_size = np.ceil(np.array(slide.level_dimensions[0]) / mini_frac).astype(np.int)
+    mini_level = get_just_gt_level(slide, mini_size)
+    mini_patch_size = patch_size // mini_frac
+
+    if mini_level == 0:
+        raise Exception('Image too large')
+    try:
+        bg_mask = generate_background_mask(slide, mini_level, mini_size)
+    except MemoryError as e:
+        slide.close()
+        raise Exception('Handled Memory Error')
+
+    assert bg_mask.shape == (mini_size[1], mini_size[0])
+
+    # extract patches from available area
+    patch_coors = []
+    num_row, num_col = bg_mask.shape
+    num_row = num_row - mini_patch_size
+    num_col = num_col - mini_patch_size
+
+    row_col = list(product(range(num_row), range(num_col)))
+
+    # attention center
+    H_min = int(np.ceil(mini_patch_size / 8))
+    H_max = int(np.ceil(mini_patch_size / 8 * 7))
+    W_min = int(np.ceil(mini_patch_size / 8))
+    W_max = int(np.ceil(mini_patch_size / 8 * 7))
+    # half of the center
+    th_num = int(np.ceil((mini_patch_size * 3 / 4 * mini_patch_size * 3 / 4)))
+
+    for row, col in row_col:
+        mini_patch = bg_mask[row:row + mini_patch_size, col: col + mini_patch_size]
+        origin = (int(col * mini_frac), int(row * mini_frac), patch_size, patch_size)
+        if np.count_nonzero(mini_patch[H_min:H_max, W_min:W_max]) >= th_num * color_min:
+            patch_coors.append(origin)
+
+    return patch_coors, bg_mask

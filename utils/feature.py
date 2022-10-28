@@ -93,3 +93,20 @@ def cluster_feature(feature_and_coordinate_dir, tmp, types, num_cluster=20, data
         with open(p + '.pkl', 'wb') as fp:
             pickle.dump(paths, fp)
         return clusters, paths
+
+
+def cluster_reduce(features, num_cluster):
+    """
+
+    Args:
+        features: size x dim
+        num_cluster: number of clusters
+
+    Returns:
+        cluster_center: num_cluster x dim
+    """
+    while len(features.shape) > 2:
+        features = features.squeeze()
+    km = KMeans(n_clusters=num_cluster)
+    km.fit(features)
+    return km.cluster_centers_
