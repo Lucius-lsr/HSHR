@@ -28,7 +28,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-SSL_RESNET_MODEL_DICT = '/home2/lishengrui/major1026/backbone/pretrained/checkpoint_199.pt'
+SSL_RESNET_MODEL_DICT = 'PATH_TO_YOUR_OUR_BACKBONE'
 
 
 def backbone_model(depth=34, cnn_base='resnet'):
@@ -166,10 +166,8 @@ if __name__ == '__main__':
     parser.add_argument("--SVS_DIR", type=str, required=True, help="The path of your WSI datasets.")
     parser.add_argument("--RESULT_DIR", type=str, required=True, help="A path to save your preprocessed results.")
     parser.add_argument("--TMP", type=str, required=True, help="The path to save some necessary tmp files.")
-    parser.add_argument("--DENSE", type=bool, default=False, help="densely extract patches")
+    parser.add_argument("--DENSE", type=bool, default=True, help="densely extract patches")
     parser.add_argument("--SAVE_ALL", type=bool, default=False, help="also save features and coordinates")
     args = parser.parse_args()
     print(args)
-    # slide = openslide.open_slide('/home2/lishengrui/new_exp/HSHR/WSI/paad/TCGA-2J-AAB8-01A-01-TSA.svs')
     preprocess(args.SVS_DIR, args.RESULT_DIR, args.TMP, args.DENSE, args.SAVE_ALL)
-    # python preprocess.py --SVS_DIR /home2/lishengrui/new_exp/HSHR/WSI --RESULT_DIR /home2/lishengrui/new_exp/HSHR/PREPROCESSED_SSL_DENSE --TMP /home2/lishengrui/new_exp/HSHR/TMP --DENSE True

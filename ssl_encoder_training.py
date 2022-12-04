@@ -54,7 +54,6 @@ if __name__ == '__main__':
     parser.add_argument("--MODEL_DIR", type=str, required=True, help="The path of ssl hash encoder model.")
     parser.add_argument("--DATASETS", type=list, nargs='+', required=False, help="A list of datasets.")
     args = parser.parse_args()
-    # python ssl_encoder_training.py --RESULT_DIR /home2/lishengrui/new_exp/HSHR/PREPROCESSED_SSL_DENSE --TMP /home2/lishengrui/new_exp/HSHR/TMP --MODEL_DIR /home2/lishengrui/new_exp/HSHR/ENCODER
 
     feature_in = 512
     feature_out = 1024
@@ -80,7 +79,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
     exps = []
-    for name in ['Hematopoietic', 'Liver/PB', 'Endocrine']:
+    for name in args.DATASETS:
         valid_dataset = PairCenterDataset(args.RESULT_DIR, args.TMP, False, EXPERIMENTS[name])
         cfs = []
         cf_paths = []
@@ -97,7 +96,6 @@ if __name__ == '__main__':
         evaluator.add_patches(raw, cf_paths)
         acc, ave = evaluator.eval()
         print(name, ave, acc)
-    # exit()
 
     for epoch in range(num_epoch):
         print('*' * 5, 'epoch: ', epoch, '*' * 5)
@@ -124,9 +122,6 @@ if __name__ == '__main__':
                     cfs = torch.from_numpy(np.array(cfs)).to(device)
                     raw = cfs
 
-                    # h = pre_model.encoder_q(raw, no_pooling=True)
-                    # evaluator.add_patches(h.cpu().detach().numpy(), cf_paths)
-
                     h, w = pre_model.encoder_q(raw, no_pooling=True, weight=True)
                     evaluator.add_patches(h.cpu().detach().numpy(), cf_paths)
                     evaluator.add_weight(w.cpu().detach().numpy())
@@ -134,6 +129,5 @@ if __name__ == '__main__':
                     acc, ave = evaluator.eval()
                     print(name, ave, acc)
 
-    # label = 'ssl'
-    label = 'double_ssl_att'
+    label = 'ssl_att'
     torch.save(model.encoder_q.state_dict(), check_dir(os.path.join(args.MODEL_DIR, label, 'model_best.pth')))

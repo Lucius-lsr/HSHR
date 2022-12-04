@@ -38,13 +38,15 @@ To preprocess the raw WSIs, you need to specify the following arguments:
 - SVS_DIR: The path of your WSI datasets.
 - RESULT_DIR: A path to save your preprocessed results.
 - TMP: The path to save some necessary tmp files.
+- DENSE: Whether densely cropping patches or sampling patches.
+- SAVE_ALL: Also saving features and coordinates.
 ```
 python preprocess.py --SVS_DIR THE/PATH/OF/YOUR/WSI/DATASETS --RESULT_DIR A/PATH/TO/SAVE/YOUR/PREPROCESSED/RESULTS --TMP THE/PATH/TO/SAVE/SOME/NECESSARY/TMP/FILES
 ```
 
 ### Step 3: SSL Encoder Training
 To train your SSL hash encoder, you need to specify the following arguments:
-- RESULT_DIR = A path to save your preprocessed results.
+- RESULT_DIR = The path that saves your preprocessed results
 - TMP = The path to save some necessary tmp files.
 - MODEL_DIR = A path to save your trained hash encoder model.
 - DATASETS = a list of datasets to test the performance of retrieval
@@ -59,7 +61,8 @@ python ssl_encoder_training.py --RESULT_DIR A/PATH/TO/SAVE/YOUR/PREPROCESSED/RES
 To retrieve with HSHR, you need to specify the following arguments:
 - MODEL_DIR = A path to save your trained hash encoder model.
 - DATASETS = a list of datasets to test the performance of retrieval
-
+- TMP = The path to save some necessary tmp files.
+- RESULT_DIR = The path that saves your preprocessed results
 ```
-python hypergraph_retrieval.py --MODEL_DIR = A/PATH/TO/SAVE/YOUR/TRAINED/HASH/ENCODER/MODEL --DATASETS SUBTYPE_A SUBTYPE_B SUBTYPE_C
+python hypergraph_retrieval.py --MODEL_DIR = A/PATH/TO/SAVE/YOUR/TRAINED/HASH/ENCODER/MODEL --DATASETS SUBTYPE_A SUBTYPE_B SUBTYPE_C --RESULT_DIR A/PATH/TO/SAVE/YOUR/PREPROCESSED/RESULTS --TMP THE/PATH/TO/SAVE/SOME/NECESSARY/TMP/FILES
 ```

@@ -40,7 +40,6 @@ class ConMat():
             print()
 
 
-
 def hamming_retrieval(database_dict):
     key_list = []
     feature_list = []
@@ -192,19 +191,7 @@ class Evaluator:
 
     def eval(self):
         # return self.min_median()
-        # return self.hypergraph_guide()
-        # return self.fixed_hypergraph_guide(k=10, alpha=1, beta=1)
-        # key_list, top_idx, dis_mat = hamming_retrieval(self.result_dict)
-        for k in [10, 20, 30, 40]:
-            inc, list_slide_id = generate_incidence(key_list, top_idx, 20, k, self.weight)
-            for alpha in range(20):
-                for beta in range(20):
-                    slide_top_idx = hyedge_similarity(inc, alpha/10, beta/10)
-                    mMV, cm = mmv_accuracy(5, list_slide_id, slide_top_idx)
-                    ave = self.average_acc(mMV)
-                    print(ave, end=' ')
-
-        # return None, None
+        return self.hypergraph_guide()
 
     def add_weight(self, weight):
         weight = weight.reshape(-1)
