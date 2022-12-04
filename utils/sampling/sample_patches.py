@@ -12,7 +12,10 @@ BACKGROUND = 0
 FOREGROUND = 1
 
 
-def sample_patch_coors(slide, num_sample=2000, patch_size=256, color_min=0.8):
+def sample_patch_coors(slide, num_sample=2000, patch_size=256, color_min=0.8, dense=False):
+    if dense:
+        return dense_patch_coors(slide, patch_size, color_min)
+
     mini_frac = 32
     mini_size = np.ceil(np.array(slide.level_dimensions[0]) / mini_frac).astype(np.int)
     mini_level = get_just_gt_level(slide, mini_size)
@@ -134,7 +137,7 @@ def dense_patch_coors(slide, patch_size=256, color_min=0.8):
     num_row = num_row - mini_patch_size
     num_col = num_col - mini_patch_size
 
-    row_col = list(product(range(num_row), range(num_col)))
+    row_col = list(product(range(0, num_row, mini_patch_size), range(0, num_col, mini_patch_size)))
 
     # attention center
     H_min = int(np.ceil(mini_patch_size / 8))

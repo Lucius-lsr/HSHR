@@ -45,6 +45,9 @@ def generate_slide(svs_dir, result_dir, tmp_path, size):
     svs_relative_path_list = svs_relative_path_list[:size]
 
     for idx, svs_relative_path in enumerate(tqdm(svs_relative_path_list)):
+        file_dir = os.path.join(result_dir, 'slide_{}'.format(idx))
+        if os.path.exists(file_dir):
+            continue
         svs_file = os.path.join(svs_dir, svs_relative_path)
         try:
             slide = openslide.open_slide(svs_file)

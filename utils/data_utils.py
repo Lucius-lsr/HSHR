@@ -30,9 +30,19 @@ def check_todo(root, svs_list, to_dos):
     to_do_list = list()
     for svs_relative_path in svs_list:
         svs_dir = os.path.dirname(svs_relative_path)
-        svs_name = os.path.basename(svs_relative_path)
-        relative_dir = os.path.join(svs_dir, svs_name[:-4])
+        svs_name = os.path.basename(svs_relative_path)[:-4]
+        relative_dir = os.path.join(svs_dir, svs_name)
         result_dir = os.path.join(root, relative_dir)
+        # k = '/home2/lishengrui/new_exp/HSHR/PREPROCESSED/skcm/TCGA-YG-AA3N-01Z-00-DX1.21350D99-44EB-42AF-83F8-90A059952FE4'
+        # print()
+        # print(result_dir)
+        # print(k)
+        # for i, j in zip(result_dir, k):
+        #     print(i==j, end=' ')
+        # # print(result_dir == k)
+        # # print(os.path.exists(result_dir))
+        # # print(os.path.exists(k))
+
         if not os.path.exists(result_dir):
             to_do_list.append(relative_dir)
         else:

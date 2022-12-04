@@ -96,6 +96,7 @@ class SimCLR(object):
             if epoch_counter >= 10:
                 self.scheduler.step()
             print(f"Epoch: {epoch_counter}\tLoss: {loss}")
+            logging.info(f"Epoch: {epoch_counter}\tLoss: {loss}")
 
             # save
             torch.save(self.model.state_dict(),

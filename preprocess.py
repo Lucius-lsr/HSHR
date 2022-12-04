@@ -16,6 +16,7 @@ from torchvision import transforms
 
 from backbone.SimCLR.models.resnet_simclr import ResNetSimCLR
 from utils.data_utils import *
+from utils.feature import cluster_reduce
 from utils.model.base_cnns import ResNetFeature, VGGFeature
 import os
 import pickle
@@ -24,12 +25,13 @@ from utils.model.base_model import SqueezeOp
 from utils.sampling import sample_patch_coors
 import numpy as np
 
-SSL_RESNET_MODEL_DICT = '/home2/lishengrui/major1026/backbone/pretrained/checkpoint_1.pt'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+SSL_RESNET_MODEL_DICT = '/home2/lishengrui/major1026/backbone/pretrained/checkpoint_199.pt'
 
 
-def extract_ft(slide, patch_coors, depth=34, batch_size=128, cnn_base='resnet'):
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def backbone_model(depth=34, cnn_base='resnet'):
     if cnn_base == 'resnet':
         model_ft = ResNetFeature(depth=depth, pooling=True, pretrained=True)
         input_img_size = 224
@@ -48,8 +50,14 @@ def extract_ft(slide, patch_coors, depth=34, batch_size=128, cnn_base='resnet'):
         input_img_size = 224
     model_ft.eval()
     model_ft = model_ft.to(device)
+    normalize = True
+    if cnn_base == 'ssl_resnet':
+        normalize = False
+    return model_ft, input_img_size, normalize
 
-    dataset = Patches(slide, patch_coors, input_img_size)
+
+def extract_ft(slide, model_ft, input_img_size, normalize, patch_coors, batch_size=128):
+    dataset = Patches(slide, patch_coors, input_img_size, normalize)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
     fts = []
@@ -65,16 +73,22 @@ def extract_ft(slide, patch_coors, depth=34, batch_size=128, cnn_base='resnet'):
 
 
 class Patches(Dataset):
-    def __init__(self, slide: openslide, patch_coors, input_img_size=224) -> None:
+    def __init__(self, slide: openslide, patch_coors, input_img_size=224, normalize=True) -> None:
         super().__init__()
         self.slide = slide
         self.patch_coors = patch_coors
-        self.transform = transforms.Compose([
-            transforms.Resize(input_img_size),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
+        if normalize:
+            self.transform = transforms.Compose([
+                transforms.Resize(input_img_size),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+            ])
+        else:
+            self.transform = transforms.Compose([
+                transforms.Resize(input_img_size),
+                transforms.ToTensor(),
+            ])
 
     def __getitem__(self, idx: int):
         coor = self.patch_coors[idx]
@@ -93,28 +107,50 @@ def set_patch_size(slide, patch_size):
     return patch_size
 
 
-def handle_slide(slide, num_sample=2000, patch_size=256, batch_size=256, cnn_base='resnet', cnn_depth=34, color_min=0.8):
+def handle_slide(slide, model_ft, input_img_size, normalize, num_sample=2000, patch_size=256, batch_size=256,
+                 color_min=0.8, dense=False):
     patch_size = set_patch_size(slide, patch_size)
-    coordinates, bg_mask = sample_patch_coors(slide, num_sample=num_sample, patch_size=patch_size, color_min=color_min)
-    features = extract_ft(slide, coordinates, depth=cnn_depth, batch_size=batch_size, cnn_base=cnn_base)
+    coordinates, bg_mask = sample_patch_coors(slide, num_sample=num_sample, patch_size=patch_size, color_min=color_min,
+                                              dense=dense)
+    features = extract_ft(slide, model_ft=model_ft, input_img_size=input_img_size, normalize=normalize,
+                          patch_coors=coordinates, batch_size=batch_size)
     return coordinates, features
 
 
-def preprocess(svs_dir, result_dir, tmp_path):
+def preprocess(svs_dir, result_dir, tmp_path, dense, save_all):
     svs_relative_path_list = get_files_type(svs_dir, 'svs', tmp_path)
-    todo_list = check_todo(result_dir, svs_relative_path_list, ['0.pkl', '0.npy', '1.pkl', '1.npy'])
+    outputs = ['clu_0.npy', 'clu_1.npy']
+    if save_all:
+        outputs = ['0.pkl', '0.npy', '1.pkl', '1.npy']
+    todo_list = check_todo(result_dir, svs_relative_path_list, outputs)
+
+    model, input_img_size, normalize = backbone_model(cnn_base='resnet')  # ssl_resnet
 
     for svs_relative_path in tqdm(todo_list):
         svs_file = os.path.join(svs_dir, svs_relative_path) + '.svs'
         try:
             slide = openslide.open_slide(svs_file)
 
-            for idx in ['0', '1']:
-                coordinates, features = handle_slide(slide, num_sample=2000, patch_size=256, cnn_base='ssl_resnet')
-                coordinates_file = get_save_path(result_dir, svs_relative_path, idx+'.pkl')
-                with open(coordinates_file, 'wb') as fp:
-                    pickle.dump(coordinates, fp)
-                np.save(get_save_path(result_dir, svs_relative_path, idx+'.npy'), features.cpu().numpy())
+            if not dense:
+                for idx in ['0', '1']:
+                    coordinates, features = handle_slide(slide, model, input_img_size, normalize)
+                    clu_centers = cluster_reduce(features.cpu().numpy(), 20)
+                    np.save(get_save_path(result_dir, svs_relative_path, 'clu_{}.npy'.format(idx)), clu_centers)
+
+                    if save_all:
+                        coordinates_file = get_save_path(result_dir, svs_relative_path, idx + '.pkl')
+                        with open(coordinates_file, 'wb') as fp:
+                            pickle.dump(coordinates, fp)
+                        np.save(get_save_path(result_dir, svs_relative_path, idx + '.npy'), features.cpu().numpy())
+            else:
+                coordinates, features = handle_slide(slide, model, input_img_size, normalize, dense=True)
+                features = features.cpu().numpy()
+                np.random.shuffle(features)
+                fs = int(features.shape[0]/2)
+                f0, f1 = features[:fs], features[fs:]
+                c0, c1 = cluster_reduce(f0, 20), cluster_reduce(f1, 20)
+                np.save(get_save_path(result_dir, svs_relative_path, 'clu_0.npy'), c0)
+                np.save(get_save_path(result_dir, svs_relative_path, 'clu_1.npy'), c1)
 
         except MemoryError as e:
             print('While handling ', svs_relative_path)
@@ -130,8 +166,10 @@ if __name__ == '__main__':
     parser.add_argument("--SVS_DIR", type=str, required=True, help="The path of your WSI datasets.")
     parser.add_argument("--RESULT_DIR", type=str, required=True, help="A path to save your preprocessed results.")
     parser.add_argument("--TMP", type=str, required=True, help="The path to save some necessary tmp files.")
+    parser.add_argument("--DENSE", type=bool, default=False, help="densely extract patches")
+    parser.add_argument("--SAVE_ALL", type=bool, default=False, help="also save features and coordinates")
     args = parser.parse_args()
-
+    print(args)
     # slide = openslide.open_slide('/home2/lishengrui/new_exp/HSHR/WSI/paad/TCGA-2J-AAB8-01A-01-TSA.svs')
-    preprocess(args.SVS_DIR, args.RESULT_DIR, args.TMP)
-    # python preprocess.py --SVS_DIR /home2/lishengrui/new_exp/HSHR/WSI --RESULT_DIR /home2/lishengrui/new_exp/HSHR/PREPROCESSED --TMP /home2/lishengrui/new_exp/HSHR/TMP
+    preprocess(args.SVS_DIR, args.RESULT_DIR, args.TMP, args.DENSE, args.SAVE_ALL)
+    # python preprocess.py --SVS_DIR /home2/lishengrui/new_exp/HSHR/WSI --RESULT_DIR /home2/lishengrui/new_exp/HSHR/PREPROCESSED_SSL_DENSE --TMP /home2/lishengrui/new_exp/HSHR/TMP --DENSE True

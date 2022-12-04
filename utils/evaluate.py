@@ -10,7 +10,10 @@ from collections import Counter
 import torch
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from retrieval_utils import hyedge_similarity, generate_incidence
+
+from CONST import SLIDES_COUNT
+from backup.accuracy.patch_acc import patch_accuracy_v3
+from utils.retrieval_utils import hyedge_similarity, generate_incidence
 from utils.data_utils import patientId
 
 
@@ -26,6 +29,7 @@ class ConMat():
         self.dict[truth][pred] += 1
 
     def report(self):
+        print()
         print(sorted(self.dict.keys()))
         for truth in sorted((self.dict.keys())):
             for pred in sorted((self.dict.keys())):
@@ -34,7 +38,7 @@ class ConMat():
                 else:
                     print(self.dict[truth][pred], end=' ')
             print()
-        print()
+
 
 
 def hamming_retrieval(database_dict):
@@ -42,7 +46,7 @@ def hamming_retrieval(database_dict):
     feature_list = []
     for key in database_dict.keys():
         key_list.append(key)
-        feature_list.append(database_dict[key][0])
+        feature_list.append(database_dict[key])
     x = np.array(feature_list)
     hash_arr = np.sign(x)
     dis_matrix = -cosine_similarity(hash_arr)
@@ -122,9 +126,18 @@ def map_accuracy(at_k, key_list, top_idx):
 class Evaluator:
     def __init__(self):
         self.result_dict = {}
+        self.weight = None
+
+    def average_acc(self, acc):
+        sum_acc = 0
+        sum_num = 0
+        for sub in acc.keys():
+            sum_acc += SLIDES_COUNT[sub] * acc[sub]
+            sum_num += SLIDES_COUNT[sub]
+        return round(sum_acc / sum_num, 4)
 
     def reset(self):
-        self.result_dict = {}
+        self.__init__()
 
     def add_patches(self, patches, paths):
         assert len(patches.shape) == 3
@@ -135,24 +148,65 @@ class Evaluator:
     def add_patch(self, patch, path):
         assert len(patch.shape) == 2
         for j in range(patch.shape[0]):
-            self.result_dict[path + '@' + str(j)] = (patch[j], 1)
+            self.result_dict[path + '@' + str(j)] = patch[j]
 
-    def report_patch(self, k, num_cluster=20):
+    def hypergraph_guide(self, num_cluster=20):
         key_list, top_idx, dis_mat = hamming_retrieval(self.result_dict)
-        inc, list_slide_id = generate_incidence(key_list, top_idx, num_cluster, k)
-        for alpha in [0, 0.5, 1, 2, 1000]:
-            for beta in [0, 0.5, 1, 2, 1000]:
-                slide_top_idx = hyedge_similarity(inc, alpha, beta)
-                mMV, cm = mmv_accuracy(5, list_slide_id, slide_top_idx)
-                mAP = map_accuracy(5, list_slide_id, slide_top_idx)
-                print(k, alpha, beta)
-                print(mMV, mAP)
-                # cm.report()
+        tmp_best = 0
+        tmp_cm = None
+        b_k, b_a, b_b, b1, b2, b3, b4 = None, None, None, None, None, None, None
+        for k in [5, 10, 15, 20, 25, 30]:
+            inc, list_slide_id = generate_incidence(key_list, top_idx, num_cluster, k, self.weight)
+            # only report best
+            for alpha in [0, 0.5, 1, 2, 1000]:
+                for beta in [0, 0.5, 1, 2, 1000]:
+                    slide_top_idx = hyedge_similarity(inc, alpha, beta)
+                    mMV, cm = mmv_accuracy(5, list_slide_id, slide_top_idx)
+                    mAP = map_accuracy(5, list_slide_id, slide_top_idx)
+                    if self.average_acc(mMV) > tmp_best:
+                        tmp_best = self.average_acc(mMV)
+                        tmp_cm = cm
+                        b_k, b_a, b_b, b1, b2, b3, b4 = k, alpha, beta, self.average_acc(mMV), mMV, self.average_acc(
+                            mAP), mAP
+                        print(b_k, b_a, b_b, b1, b2)
+        tmp_cm.report()
+        print(b_k, b_a, b_b, b3, b4)
+        return b2, b1
 
-    def fixed_report_patch(self, k=10, alpha=1, beta=1, num_cluster=20):
+    def fixed_hypergraph_guide(self, k=10, alpha=1, beta=1, num_cluster=20):
         key_list, top_idx, dis_mat = hamming_retrieval(self.result_dict)
-        inc, list_slide_id = generate_incidence(key_list, top_idx, num_cluster, k)
+        inc, list_slide_id = generate_incidence(key_list, top_idx, num_cluster, k, self.weight)
         slide_top_idx = hyedge_similarity(inc, alpha, beta)
         mMV, cm = mmv_accuracy(5, list_slide_id, slide_top_idx)
-        return mMV
+        # cm.report()
+        return mMV, self.average_acc(mMV)
 
+    def min_median(self):
+        # min-median
+        key_list, top_idx, dis_mat = hamming_retrieval(self.result_dict)
+        list_slide_id, slide_top_idx = patch_accuracy_v3(key_list, top_idx, dis_mat)
+        mMV, cm = mmv_accuracy(5, list_slide_id, slide_top_idx)
+        # mAP = map_accuracy(5, list_slide_id, slide_top_idx)
+        cm.report()
+        return mMV, self.average_acc(mMV)
+
+    def eval(self):
+        # return self.min_median()
+        # return self.hypergraph_guide()
+        # return self.fixed_hypergraph_guide(k=10, alpha=1, beta=1)
+        # key_list, top_idx, dis_mat = hamming_retrieval(self.result_dict)
+        for k in [10, 20, 30, 40]:
+            inc, list_slide_id = generate_incidence(key_list, top_idx, 20, k, self.weight)
+            for alpha in range(20):
+                for beta in range(20):
+                    slide_top_idx = hyedge_similarity(inc, alpha/10, beta/10)
+                    mMV, cm = mmv_accuracy(5, list_slide_id, slide_top_idx)
+                    ave = self.average_acc(mMV)
+                    print(ave, end=' ')
+
+        # return None, None
+
+    def add_weight(self, weight):
+        weight = weight.reshape(-1)
+        assert len(self.result_dict) == weight.shape[0]
+        self.weight = weight

@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-@Time    : 2021/10/19 13:35
-@Author  : Lucius
-@FileName: baseline_wsisa.py
-@Software: PyCharm
-"""
 import argparse
 import copy
 import os
@@ -12,27 +5,46 @@ import torch
 from torch import nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from utils.data_utils import check_dir
+
+from CONST import EXPERIMENTS
+from utils.data_utils import check_dir, get_files_type
 from utils.evaluate import Evaluator
 from self_supervision.call import get_moco
-from utils.model.base_model import HashLayer
-from utils.feature import cluster_feature, mean_feature
+from utils.feature import min_max_binarized
+from utils.model.base_model import HashEncoder, AttenHashEncoder
+import numpy as np
 
 
-class WSISADataset(Dataset):
+class PairCenterDataset(Dataset):
 
-    def __init__(self, result_dir, tmp, data_from=0, data_to=1) -> None:
+    def __init__(self, cluster_dir, tmp, single=False, subtypes: list = None) -> None:
         super().__init__()
-        cluster_means_0, cluster_means_1, paths = mean_feature(result_dir, tmp, data_from, data_to)
-        self.data_0 = cluster_means_0
-        self.data_1 = cluster_means_1
-        self.paths = paths
+        cluster_list_0 = get_files_type(cluster_dir, 'clu_0.npy', tmp)
+        cluster_list_0.sort()
+        cluster_list_1 = get_files_type(cluster_dir, 'clu_1.npy', tmp)
+        set1 = set(cluster_list_1)
+        self.centers = []
+        for f0 in cluster_list_0:
+            f1 = f0.replace('clu_0.npy', 'clu_1.npy')
+            if f1 not in set1:
+                continue
+            path = os.path.dirname(f0)
+            if subtypes is not None and path.split("/")[-2] not in subtypes:
+                continue
 
-    def __getitem__(self, item):
-        return self.data_0[item], self.data_1[item], self.paths[item]
+            f0, f1 = os.path.join(cluster_dir, f0), os.path.join(cluster_dir, f1)
+            c0 = np.load(f0)
+            if single:
+                self.centers.append((c0, path))
+            else:
+                c1 = np.load(f1)
+                self.centers.append((c0, c1, path))
+
+    def __getitem__(self, idx):
+        return self.centers[idx]
 
     def __len__(self) -> int:
-        return len(self.data_0)
+        return len(self.centers)
 
 
 if __name__ == '__main__':
@@ -40,8 +52,9 @@ if __name__ == '__main__':
     parser.add_argument("--RESULT_DIR", type=str, required=True, help="A path to save your preprocessed results.")
     parser.add_argument("--TMP", type=str, required=True, help="The path to save some necessary tmp files.")
     parser.add_argument("--MODEL_DIR", type=str, required=True, help="The path of ssl hash encoder model.")
-    parser.add_argument("--DATASETS", type=list, nargs='+', required=True, help="A list of datasets.")
+    parser.add_argument("--DATASETS", type=list, nargs='+', required=False, help="A list of datasets.")
     args = parser.parse_args()
+    # python ssl_encoder_training.py --RESULT_DIR /home2/lishengrui/new_exp/HSHR/PREPROCESSED_SSL_DENSE --TMP /home2/lishengrui/new_exp/HSHR/TMP --MODEL_DIR /home2/lishengrui/new_exp/HSHR/ENCODER
 
     feature_in = 512
     feature_out = 1024
@@ -49,29 +62,49 @@ if __name__ == '__main__':
     lr = 0.003
     momentum = 0.9
     weight_decay = 1e-4
-    batch_size = 128
+    batch_size = 128  # 128
     num_cluster = 20
+    gamma = 0.99
+    num_epoch = 100
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     criterion = nn.CrossEntropyLoss().cuda(True)
-    train_dataset = WSISADataset(args.RESULT_DIR, args.TMP)
+    train_dataset = PairCenterDataset(args.RESULT_DIR, args.TMP)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
-    model = get_moco(HashLayer(feature_in, feature_out, depth), HashLayer(feature_in, feature_out, depth), device,
-                     feature_out)
+    base_model = lambda: AttenHashEncoder(feature_in, feature_out, depth)
+    model = get_moco(base_model(), base_model(), device, feature_out)
     model = model.to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr, momentum=momentum, weight_decay=weight_decay)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
 
     evaluator = Evaluator()
-    cfs, cf_paths = cluster_feature(args.RESULT_DIR, args.TMP, args.DATASETS, num_cluster)
-    cfs = torch.from_numpy(cfs).to(device)
+    exps = []
+    for name in ['Hematopoietic', 'Liver/PB', 'Endocrine']:
+        valid_dataset = PairCenterDataset(args.RESULT_DIR, args.TMP, False, EXPERIMENTS[name])
+        cfs = []
+        cf_paths = []
+        for c1, _, path in valid_dataset.centers:
+            cfs.append(c1)
+            cf_paths.append(path)
+        cfs = np.array(cfs)
+        exps.append((cfs, cf_paths, name))
 
-    for epoch in range(30):
+    print('without hash encoder:')
+    for cfs, cf_paths, name in exps:
+        raw = min_max_binarized(cfs)
+        evaluator.reset()
+        evaluator.add_patches(raw, cf_paths)
+        acc, ave = evaluator.eval()
+        print(name, ave, acc)
+    # exit()
+
+    for epoch in range(num_epoch):
         print('*' * 5, 'epoch: ', epoch, '*' * 5)
         loss_sum = 0
         loss_count = 0
         pre_model = copy.deepcopy(model)
-        for x0, x1, path in train_dataloader:
+        for x0, x1, _ in train_dataloader:
             x0, x1 = x0.to(device), x1.to(device)
             output, target = model(x0, x1)
             loss = criterion(output, target)
@@ -80,17 +113,27 @@ if __name__ == '__main__':
             optimizer.step()
             loss_sum += loss.item()
             loss_count += 1
-
+        scheduler.step()
         loss_ave = loss_sum / loss_count
         print("loss: ", loss_ave)
 
-        evaluator.reset()
-        with torch.no_grad():
-            raw = cfs
-            h = pre_model.encoder_q(raw)
-            evaluator.add_patches(h.cpu().detach().numpy(), cf_paths)
-            acc = evaluator.fixed_report_patch()
-            print(acc)
+        if epoch % 10 == 0 or epoch == num_epoch - 1:
+            with torch.no_grad():
+                for cfs, cf_paths, name in exps:
+                    evaluator.reset()
+                    cfs = torch.from_numpy(np.array(cfs)).to(device)
+                    raw = cfs
 
-    torch.save(model.encoder_q.state_dict(), check_dir(os.path.join(args.MODEL_DIR, 'ssl', 'model_best.pth')))
+                    # h = pre_model.encoder_q(raw, no_pooling=True)
+                    # evaluator.add_patches(h.cpu().detach().numpy(), cf_paths)
 
+                    h, w = pre_model.encoder_q(raw, no_pooling=True, weight=True)
+                    evaluator.add_patches(h.cpu().detach().numpy(), cf_paths)
+                    evaluator.add_weight(w.cpu().detach().numpy())
+
+                    acc, ave = evaluator.eval()
+                    print(name, ave, acc)
+
+    # label = 'ssl'
+    label = 'double_ssl_att'
+    torch.save(model.encoder_q.state_dict(), check_dir(os.path.join(args.MODEL_DIR, label, 'model_best.pth')))

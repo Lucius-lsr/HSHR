@@ -11,7 +11,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 import pickle
-from data_utils import get_files_type
+from utils.data_utils import get_files_type
 
 
 def mean_feature(feature_and_coordinate_dir, tmp, data_from=0, data_to=1):
@@ -110,3 +110,30 @@ def cluster_reduce(features, num_cluster):
     km = KMeans(n_clusters=num_cluster)
     km.fit(features)
     return km.cluster_centers_
+
+
+def min_max_binarized(feats):
+    input_shape = feats.shape
+    dim = feats.shape[-1]
+    feats = feats.reshape(-1, dim)
+    prev = np.concatenate([np.zeros([feats.shape[0], 1]), feats[:, :-1]], axis=1)
+    h = np.sign(feats-prev)
+    return h.reshape(input_shape)
+
+    # input_shape = feats.shape
+    # all_output = []
+    # for feat in tqdm(feats):
+    #     prev = float('inf')
+    #     output_binarized = []
+    #     for ele in feat:
+    #         if ele < prev:
+    #             code = -1
+    #             output_binarized.append(code)
+    #         elif ele >= prev:
+    #             code = 1
+    #             output_binarized.append(code)
+    #         prev = ele
+    #     all_output.append(output_binarized)
+    # all_output = np.array(all_output)
+    # all_output = all_output.reshape(input_shape)
+    # return all_output
